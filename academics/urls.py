@@ -15,10 +15,10 @@ urlpatterns = [
     path('years/<int:pk>/edit/', views.AcademicYearUpdateView.as_view(), name='year_update'),
     path('years/<int:pk>/delete/', views.AcademicYearDeleteView.as_view(), name='year_delete'),
 
-    path('semesters/', views.SemesterListView.as_view(), name='semester_list'),
-    path('semesters/add/', views.SemesterCreateView.as_view(), name='semester_create'),
-    path('semesters/<int:pk>/edit/', views.SemesterUpdateView.as_view(), name='semester_update'),
-    path('semesters/<int:pk>/delete/', views.SemesterDeleteView.as_view(), name='semester_delete'),
+    path('terms/', views.TermListView.as_view(), name='term_list'),
+    path('terms/add/', views.TermCreateView.as_view(), name='term_create'),
+    path('terms/<int:pk>/edit/', views.TermUpdateView.as_view(), name='term_update'),
+    path('terms/<int:pk>/delete/', views.TermDeleteView.as_view(), name='term_delete'),
 
     path('classes/', views.SchoolClassListView.as_view(), name='class_list'),
     path('classes/add/', views.SchoolClassCreateView.as_view(), name='class_create'),

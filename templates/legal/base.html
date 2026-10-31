@@ -1,0 +1,28 @@
+{% extends 'landing/base.html' %}
+
+{% block title %}{% block legal_page_title %}Legal Information{% endblock %} | {{ school_name }}{% endblock %}
+
+{% block meta_description %}{% block legal_meta_description %}Legal information for {{ school_name }}.{% endblock %}{% endblock %}
+
+{% block body_class %}legal-shell{% endblock %}
+
+{% block content %}
+<section class="legal-page">
+    <div class="container">
+        <article class="legal-card">
+            <a class="legal-back" href="{% url 'home' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Back to home</a>
+            <span class="eyebrow">Legal and policies</span>
+            <h1>{% block legal_title %}{% endblock %}</h1>
+            <p class="legal-meta">Last updated {% now "F Y" %}</p>
+            <div class="legal-body">
+                {% block legal_body %}{% endblock %}
+                <div class="legal-contact">
+                    <strong>Questions about this policy?</strong>
+                    Contact {{ school_name }} at <a href="mailto:{{ school_email }}">{{ school_email }}</a>
+                    or {{ school_phone }}.
+                </div>
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}

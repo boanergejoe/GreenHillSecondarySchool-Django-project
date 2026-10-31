@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 
@@ -18,8 +19,8 @@ class Examination(models.Model):
     academic_year = models.ForeignKey(
         'academics.AcademicYear', on_delete=models.CASCADE, related_name='examinations'
     )
-    semester = models.ForeignKey(
-        'academics.Semester', on_delete=models.SET_NULL, null=True, blank=True,
+    term = models.ForeignKey(
+        'academics.Term', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='examinations',
     )
     school_class = models.ForeignKey(
@@ -37,6 +38,23 @@ class Examination(models.Model):
 
     def __str__(self):
         return f'{self.name} - {self.academic_year.name}'
+
+    def clean(self):
+        errors = {}
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            errors['end_date'] = 'End date cannot be before the start date.'
+        if (
+            self.academic_year_id and self.school_class_id
+            and self.school_class.academic_year_id != self.academic_year_id
+        ):
+            errors['school_class'] = 'The class must belong to the selected academic year.'
+        if (
+            self.term_id and self.academic_year_id
+            and self.term.academic_year_id != self.academic_year_id
+        ):
+            errors['term'] = 'The term must belong to the selected academic year.'
+        if errors:
+            raise ValidationError(errors)
 
     def get_absolute_url(self):
         return reverse('examinations:exam_detail', args=[self.pk])

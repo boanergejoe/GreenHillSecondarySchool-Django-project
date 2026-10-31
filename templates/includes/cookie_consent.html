@@ -1,0 +1,41 @@
+{% load static %}
+<div class="cookie-consent" id="cookieConsent" role="region" aria-label="Cookie consent" hidden>
+    <div class="cookie-consent-copy">
+        <strong>Cookies and privacy</strong>
+        <p>
+            We use essential cookies to keep your account secure and the site working.
+            Read our <a href="{% url 'cookie_policy' %}">Cookie Policy</a> and
+            <a href="{% url 'privacy_policy' %}">Privacy Policy</a>.
+        </p>
+    </div>
+    <div class="cookie-consent-actions">
+        <button type="button" class="cookie-btn cookie-btn-muted" data-cookie-choice="essential">Essential only</button>
+        <button type="button" class="cookie-btn cookie-btn-primary" data-cookie-choice="accepted">Accept</button>
+    </div>
+</div>
+<script>
+    (function () {
+        var storageKey = 'greenhill.cookieConsent';
+        var banner = document.getElementById('cookieConsent');
+        if (!banner) {
+            return;
+        }
+        try {
+            if (!window.localStorage.getItem(storageKey)) {
+                banner.hidden = false;
+            }
+        } catch (error) {
+            banner.hidden = false;
+        }
+        banner.querySelectorAll('[data-cookie-choice]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                try {
+                    window.localStorage.setItem(storageKey, button.dataset.cookieChoice);
+                } catch (error) {
+                    banner.hidden = true;
+                }
+                banner.hidden = true;
+            });
+        });
+    }());
+</script>

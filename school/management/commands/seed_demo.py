@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from academics.models import AcademicYear, Course, Department, SchoolClass, Semester, Subject
+from academics.models import AcademicYear, Course, Department, SchoolClass, Subject, Term
 from accounts.models import User
 from assignments.models import Assignment, Submission
 from attendance.models import Attendance
@@ -59,30 +59,38 @@ class Command(BaseCommand):
                 'is_current': True,
             },
         )
-        term_one, _ = Semester.objects.update_or_create(
-            name='Term 1',
-            academic_year=year,
-            defaults={
-                'start_date': year.start_date,
-                'end_date': today.replace(month=6, day=26),
-                'is_current': True,
-            },
+        term_windows = [
+            ('Term 1', (2, 2), (5, 8)),
+            ('Term 2', (5, 25), (8, 21)),
+            ('Term 3', (9, 7), (11, 27)),
+        ]
+        terms = []
+        for name, start, end in term_windows:
+            term, _ = Term.objects.update_or_create(
+                name=name,
+                academic_year=year,
+                defaults={
+                    'start_date': today.replace(month=start[0], day=start[1]),
+                    'end_date': today.replace(month=end[0], day=end[1]),
+                },
+            )
+            terms.append(term)
+        current_term = next(
+            (term for term in terms if term.start_date <= today <= term.end_date),
+            terms[0],
         )
-        Semester.objects.update_or_create(
-            name='Term 2',
-            academic_year=year,
-            defaults={
-                'start_date': today.replace(month=7, day=13),
-                'end_date': year.end_date,
-                'is_current': False,
-            },
+        Term.objects.filter(academic_year=year).exclude(pk=current_term.pk).update(
+            is_current=False
         )
+        Term.objects.filter(pk=current_term.pk).update(is_current=True)
+        current_term.is_current = True
+
         Fee.objects.update_or_create(
             name='Registration Fee',
             school_class=None,
             academic_year=year,
             defaults={
-                'semester': term_one,
+                'term': current_term,
                 'amount': Decimal('25000.00'),
                 'due_date': today.replace(month=2, day=20),
                 'is_active': True,
@@ -164,12 +172,15 @@ class Command(BaseCommand):
             teachers.append(teacher)
 
         classes = []
-        for level, name, stream, room, department in [
-            ('Senior 1', 'Senior 1 A', 'A', 'Room 1', None),
-            ('Senior 2', 'Senior 2 A', 'A', 'Room 2', None),
-            ('Senior 3', 'Senior 3 A', 'A', 'Room 3', sciences),
-            ('Senior 4', 'Senior 4 A', 'A', 'Room 4', arts),
-        ]:
+        class_data = [
+            (SchoolClass.Level.SENIOR_1, 'Senior 1 A', '', 'Room 1', None),
+            (SchoolClass.Level.SENIOR_2, 'Senior 2 A', '', 'Room 2', None),
+            (SchoolClass.Level.SENIOR_3, 'Senior 3 Arts', SchoolClass.Stream.ARTS, 'Room 3', arts),
+            (SchoolClass.Level.SENIOR_3, 'Senior 3 Science', SchoolClass.Stream.SCIENCE, 'Room 3B', sciences),
+            (SchoolClass.Level.SENIOR_4, 'Senior 4 Arts', SchoolClass.Stream.ARTS, 'Room 4', arts),
+            (SchoolClass.Level.SENIOR_4, 'Senior 4 Science', SchoolClass.Stream.SCIENCE, 'Room 4B', sciences),
+        ]
+        for index, (level, name, stream, room, department) in enumerate(class_data):
             school_class, _ = SchoolClass.objects.update_or_create(
                 name=name,
                 academic_year=year,
@@ -177,12 +188,18 @@ class Command(BaseCommand):
                     'level': level,
                     'stream': stream,
                     'department': department,
-                    'class_teacher': teacher_users[min(len(classes), len(teacher_users) - 1)],
+                    'class_teacher': teacher_users[index % len(teacher_users)],
                     'capacity': 45,
                     'room': room,
                 },
             )
             classes.append(school_class)
+
+        for legacy_class in SchoolClass.objects.filter(
+            academic_year=year, name__in=['Senior 3 A', 'Senior 4 A']
+        ).exclude(pk__in=[school_class.pk for school_class in classes]):
+            if not legacy_class.students.exists():
+                legacy_class.delete()
 
         course_data = [
             ('Mathematics', 'MATH', sciences),
@@ -217,10 +234,22 @@ class Command(BaseCommand):
             'ICT': [arts, sciences], 'BIO': [sciences], 'CHEM': [sciences],
             'PHY': [sciences], 'GEO': [arts],
         }
+        shared_codes = ['MATH', 'ENG', 'ICT']
         subjects_by_class = {}
         for school_class in classes:
+            if school_class.level in (
+                SchoolClass.Level.SENIOR_3, SchoolClass.Level.SENIOR_4,
+            ):
+                subject_codes = shared_codes + (
+                    ['GEO'] if school_class.stream == SchoolClass.Stream.ARTS
+                    else ['BIO', 'CHEM', 'PHY']
+                )
+            else:
+                subject_codes = shared_codes
+
             subjects = []
-            for code, course in courses.items():
+            for code in subject_codes:
+                course = courses[code]
                 teacher = subject_teacher[code]
                 subject, _ = Subject.objects.update_or_create(
                     code=code,
@@ -230,12 +259,18 @@ class Command(BaseCommand):
                         'name': course.name,
                         'course': course,
                         'teacher': teacher.user,
-                        'semester': term_one,
+                        'term': current_term,
                         'is_active': True,
                     },
                 )
                 subject.departments.set(subject_departments[code])
                 subjects.append(subject)
+            for stale_subject in school_class.subjects.exclude(code__in=subject_codes):
+                if stale_subject.results.exists():
+                    stale_subject.is_active = False
+                    stale_subject.save(update_fields=['is_active'])
+                else:
+                    stale_subject.delete()
             subjects_by_class[school_class.pk] = subjects
 
         parent_data = [
@@ -296,14 +331,22 @@ class Command(BaseCommand):
             )
             students.append(student)
 
+        tuition_by_class = {
+            'Senior 1 A': Decimal('75000.00'),
+            'Senior 2 A': Decimal('75000.00'),
+            'Senior 3 Arts': Decimal('85000.00'),
+            'Senior 3 Science': Decimal('95000.00'),
+            'Senior 4 Arts': Decimal('90000.00'),
+            'Senior 4 Science': Decimal('100000.00'),
+        }
         for school_class in classes:
             tuition, _ = Fee.objects.update_or_create(
                 name='Tuition Fee',
                 school_class=school_class,
                 academic_year=year,
                 defaults={
-                    'semester': term_one,
-                    'amount': Decimal('75000.00'),
+                    'term': current_term,
+                    'amount': tuition_by_class[school_class.name],
                     'due_date': today.replace(month=3, day=15),
                     'is_active': True,
                     'description': 'Term tuition and academic services.',
@@ -314,7 +357,7 @@ class Command(BaseCommand):
                 school_class=school_class,
                 academic_year=year,
                 defaults={
-                    'semester': term_one,
+                    'term': current_term,
                     'amount': Decimal('15000.00'),
                     'due_date': today.replace(month=4, day=10),
                     'is_active': True,
@@ -341,7 +384,7 @@ class Command(BaseCommand):
             school_class=classes[0],
             defaults={
                 'exam_type': Examination.ExamType.MIDTERM,
-                'semester': term_one,
+                'term': current_term,
                 'start_date': today - timedelta(days=14),
                 'end_date': today - timedelta(days=10),
                 'total_marks': 100,

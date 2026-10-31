@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import ListView
 
@@ -124,9 +124,6 @@ def announcement_detail(request, pk):
         'announcement': announcement,
         'can_manage': user_has_role(request.user, ()),
     })
-
-
-from django.shortcuts import render  # noqa: E402
 
 
 @login_required

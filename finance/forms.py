@@ -1,6 +1,6 @@
 from django import forms
 
-from academics.models import AcademicYear, SchoolClass, Semester
+from academics.models import AcademicYear, SchoolClass
 from accounts.forms import BootstrapFormMixin
 from students.models import Student
 
@@ -14,7 +14,7 @@ class FeeForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Fee
         fields = [
-            'name', 'school_class', 'academic_year', 'semester', 'amount',
+            'name', 'school_class', 'academic_year', 'term', 'amount',
             'due_date', 'is_active', 'description',
         ]
         widgets = {
@@ -29,6 +29,17 @@ class FeeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['school_class'].help_text = (
             'Leave blank to apply this fee to every student in every class.'
         )
+
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        term = cleaned.get('term')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and term and term.academic_year_id != academic_year.pk:
+            self.add_error('term', 'The term must belong to the selected academic year.')
+        return cleaned
 
 
 class PaymentForm(BootstrapFormMixin, forms.ModelForm):

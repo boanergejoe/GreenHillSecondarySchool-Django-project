@@ -8,3 +8,7 @@ class TeacherAdmin(admin.ModelAdmin):
     list_display = ('staff_id', 'user', 'department', 'specialization', 'employment_type', 'status')
     list_filter = ('status', 'employment_type', 'department')
     search_fields = ('staff_id', 'user__first_name', 'user__last_name', 'specialization')
+    autocomplete_fields = ('user', 'department')
+    list_select_related = ('user', 'department')
+    date_hierarchy = 'date_joined'
+    list_per_page = 25

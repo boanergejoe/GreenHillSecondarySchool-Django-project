@@ -25,7 +25,7 @@
             </p>
             <div class="hero-actions hero-reveal">
                 <a class="btn btn-primary btn-lg" href="{% url 'accounts:login' %}">
-                    Get Started Today
+                    Open School Portal
                     <i class="bi bi-arrow-right" aria-hidden="true"></i>
                 </a>
                 <a class="btn btn-glass btn-lg" href="#features">
@@ -41,13 +41,13 @@
                     <span class="mini-avatar avatar-sand">PA</span>
                 </div>
                 <div>
-                    <strong>Built for modern schools &amp; colleges</strong>
-                    <span>Secure by design. Ready from day one.</span>
+                    <strong>Role-based access for every school role</strong>
+                    <span>Secure sign-in. Clear permissions. One shared record.</span>
                 </div>
             </div>
         </div>
 
-        <div class="hero-visual hero-reveal" aria-label="{{ school_name }} dashboard preview">
+        <div class="hero-visual hero-reveal" role="img" aria-label="Preview of the {{ school_name }} management dashboard">
             <div class="dashboard-device">
                 <div class="device-topbar">
                     <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -191,28 +191,28 @@
     </div>
 </section>
 
-<section class="metrics" aria-label="Platform statistics">
+<section class="metrics" aria-label="Platform capacity at a glance">
     <div class="container">
         <div class="metrics-grid">
             <article class="metric-card" data-aos="fade-up">
                 <span class="metric-icon"><i class="bi bi-people-fill"></i></span>
-                <div><strong><span data-counter="1000" data-suffix="+">0</span></strong><span>Students managed</span></div>
-                <small>Illustrative platform scale</small>
+                <div><strong><span data-counter="1000" data-suffix="+">1,000+</span></strong><span>Student records</span></div>
+                <small>Capacity for a growing school</small>
             </article>
             <article class="metric-card" data-aos="fade-up" data-aos-delay="80">
                 <span class="metric-icon cyan"><i class="bi bi-person-video3"></i></span>
-                <div><strong><span data-counter="100" data-suffix="+">0</span></strong><span>Teachers supported</span></div>
-                <small>Connected and organized</small>
+                <div><strong><span data-counter="100" data-suffix="+">100+</span></strong><span>Staff accounts</span></div>
+                <small>Teachers, leaders, and finance</small>
             </article>
             <article class="metric-card" data-aos="fade-up" data-aos-delay="160">
                 <span class="metric-icon green"><i class="bi bi-door-open-fill"></i></span>
-                <div><strong><span data-counter="50" data-suffix="+">0</span></strong><span>Classes coordinated</span></div>
-                <small>Across every level</small>
+                <div><strong><span data-counter="50" data-suffix="+">50+</span></strong><span>Classes organized</span></div>
+                <small>Streams, terms, and subjects</small>
             </article>
             <article class="metric-card" data-aos="fade-up" data-aos-delay="240">
-                <span class="metric-icon amber"><i class="bi bi-shield-check"></i></span>
-                <div><strong><span data-counter="99.9" data-decimals="1" data-suffix="%">0</span></strong><span>System uptime</span></div>
-                <small>Secure, always available</small>
+                <span class="metric-icon amber"><i class="bi bi-grid-1x2-fill"></i></span>
+                <div><strong><span data-counter="8">8</span></strong><span>Connected modules</span></div>
+                <small>One shared source of truth</small>
             </article>
         </div>
     </div>
@@ -277,49 +277,49 @@
                 <span class="feature-icon"><i class="bi bi-person-badge-fill"></i></span>
                 <h3>Student Management</h3>
                 <p>Manage student registration, profiles, enrollment, and academic records from one reliable source of truth.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="60">
                 <span class="feature-icon cyan"><i class="bi bi-person-workspace"></i></span>
                 <h3>Teacher Management</h3>
                 <p>Organize teacher profiles, departments, assignments, and workloads with clarity and confidence.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="120">
                 <span class="feature-icon green"><i class="bi bi-calendar2-check-fill"></i></span>
                 <h3>Attendance Tracking</h3>
                 <p>Monitor daily attendance, spot patterns early, and generate detailed attendance reports instantly.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="180">
                 <span class="feature-icon amber"><i class="bi bi-clipboard2-data-fill"></i></span>
                 <h3>Examination Management</h3>
                 <p>Manage examinations, grades, results, and polished report cards without spreadsheet chaos.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="0">
                 <span class="feature-icon violet"><i class="bi bi-cash-coin"></i></span>
                 <h3>Fee Management</h3>
                 <p>Track payments, outstanding balances, receipts, and financial transactions with complete visibility.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="60">
                 <span class="feature-icon rose"><i class="bi bi-journal-bookmark-fill"></i></span>
                 <h3>Academic Management</h3>
-                <p>Organize courses, subjects, classes, departments, and semesters inside a beautifully structured system.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <p>Organize courses, subjects, classes, departments, and three-term academic years inside a beautifully structured system.</p>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="120">
                 <span class="feature-icon peach"><i class="bi bi-person-heart"></i></span>
                 <h3>Parent Portal</h3>
                 <p>Keep parents informed about academic progress, attendance, fees, and important school announcements.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
             <article class="feature-card" data-aos="fade-up" data-aos-delay="180">
                 <span class="feature-icon teal"><i class="bi bi-bar-chart-line-fill"></i></span>
                 <h3>Reports &amp; Analytics</h3>
                 <p>Generate comprehensive Excel and PDF reports and monitor institutional performance at a glance.</p>
-                <span class="feature-link">Explore module <i class="bi bi-arrow-up-right"></i></span>
+                <span class="feature-link">Included <i class="bi bi-check2-circle" aria-hidden="true"></i></span>
             </article>
         </div>
     </div>
@@ -452,8 +452,8 @@
     <div class="container">
         <div class="section-heading" data-aos="fade-up">
             <span class="eyebrow"><span class="eyebrow-dot"></span>Community voices</span>
-            <h2>Trusted by the <span class="gradient-text">education community.</span></h2>
-            <p>Illustrative stories from the families and school community {{ school_name }} is proud to serve.</p>
+            <h2>What a better school day <span class="gradient-text">can feel like.</span></h2>
+            <p>Illustrative perspectives from the leaders, teachers, and families who use the platform every day.</p>
         </div>
 
         <div class="testimonial-shell" data-aos="zoom-in">
@@ -464,7 +464,7 @@
                     <div class="testimonial-author">
                         <span class="testimonial-avatar avatar-blue">AJ</span>
                         <div><strong>Amina J.</strong><span>School Principal &middot; Riverbank Academy</span></div>
-                        <span class="sample-tag">Illustrative testimonial</span>
+                        <span class="sample-tag">Example scenario</span>
                     </div>
                 </article>
                 <article class="testimonial-slide" data-slide="1">
@@ -473,7 +473,7 @@
                     <div class="testimonial-author">
                         <span class="testimonial-avatar avatar-cyan">MO</span>
                         <div><strong>Michael O.</strong><span>Head of Academics &middot; St. Clare College</span></div>
-                        <span class="sample-tag">Illustrative testimonial</span>
+                        <span class="sample-tag">Example scenario</span>
                     </div>
                 </article>
                 <article class="testimonial-slide" data-slide="2">
@@ -482,17 +482,17 @@
                     <div class="testimonial-author">
                         <span class="testimonial-avatar avatar-sand">GK</span>
                         <div><strong>Grace K.</strong><span>Parent Representative &middot; Green Hill Parent Council</span></div>
-                        <span class="sample-tag">Illustrative testimonial</span>
+                        <span class="sample-tag">Example scenario</span>
                     </div>
                 </article>
             </div>
 
             <div class="testimonial-controls">
                 <button class="slider-btn" id="testimonialPrev" type="button" aria-label="Previous testimonial"><i class="bi bi-arrow-left"></i></button>
-                <div class="slider-dots" role="tablist" aria-label="Choose testimonial">
-                    <button class="slider-dot active" type="button" data-slide-to="0" aria-label="Testimonial 1" aria-selected="true"></button>
-                    <button class="slider-dot" type="button" data-slide-to="1" aria-label="Testimonial 2" aria-selected="false"></button>
-                    <button class="slider-dot" type="button" data-slide-to="2" aria-label="Testimonial 3" aria-selected="false"></button>
+                <div class="slider-dots" role="group" aria-label="Choose testimonial">
+                    <button class="slider-dot active" type="button" data-slide-to="0" aria-label="Testimonial 1" aria-pressed="true"></button>
+                    <button class="slider-dot" type="button" data-slide-to="1" aria-label="Testimonial 2" aria-pressed="false"></button>
+                    <button class="slider-dot" type="button" data-slide-to="2" aria-label="Testimonial 3" aria-pressed="false"></button>
                 </div>
                 <button class="slider-btn" id="testimonialNext" type="button" aria-label="Next testimonial"><i class="bi bi-arrow-right"></i></button>
             </div>
@@ -506,11 +506,11 @@
     <span class="cta-particles" aria-hidden="true"></span>
     <div class="container cta-inner" data-aos="zoom-in">
         <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span>Your next chapter</span>
-        <h2>Ready to transform <span class="gradient-text-light">your institution?</span></h2>
-        <p>Bring your entire educational institution together with a smarter, simpler, and more powerful management platform.</p>
+        <h2>Ready to bring <span class="gradient-text-light">your school together?</span></h2>
+        <p>Give every role one secure place to manage learning, records, attendance, results, and fees.</p>
         <div class="cta-actions">
-            <a class="btn btn-light btn-lg" href="{% url 'accounts:login' %}">Get Started Now <i class="bi bi-arrow-right"></i></a>
-            <a class="btn btn-outline-light btn-lg" href="#contact">Contact Our Team</a>
+            <a class="btn btn-light btn-lg" href="{% url 'accounts:login' %}">Sign In to Portal <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+            <a class="btn btn-outline-light btn-lg" href="mailto:{{ school_email }}">Email the School</a>
         </div>
         <div class="cta-note"><i class="bi bi-shield-check"></i> Secure access &middot; Role-based permissions &middot; Built for modern institutions</div>
     </div>
@@ -527,12 +527,6 @@
                     <span class="brand-copy"><strong>{{ school_name }}</strong><small>School Management</small></span>
                 </a>
                 <p>{{ school_motto }}. A connected school management platform built to help our community operate with clarity, care, and confidence.</p>
-                <div class="social-links">
-                    <a href="#" aria-label="Facebook" title="Facebook"><i class="bi bi-facebook"></i></a>
-                    <a href="#" aria-label="X" title="X"><i class="bi bi-twitter-x"></i></a>
-                    <a href="#" aria-label="LinkedIn" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
-                    <a href="#" aria-label="Instagram" title="Instagram"><i class="bi bi-instagram"></i></a>
-                </div>
             </div>
             <div class="footer-column">
                 <h3>Quick Links</h3>
@@ -561,37 +555,17 @@
         </div>
         <div class="footer-bottom">
             <span>&copy; {% now "Y" %} {{ school_name }}. All rights reserved.</span>
-            <div>
-                <button class="footer-legal" type="button" data-dialog-open="privacyDialog">Privacy Policy</button>
-                <button class="footer-legal" type="button" data-dialog-open="termsDialog">Terms and Conditions</button>
+            <div class="footer-legal-links">
+                <a class="footer-legal" href="{% url 'privacy_policy' %}">Privacy Policy</a>
+                <a class="footer-legal" href="{% url 'terms_of_service' %}">Terms of Service</a>
+                <a class="footer-legal" href="{% url 'cookie_policy' %}">Cookie Policy</a>
+                <a class="footer-legal" href="{% url 'acceptable_use' %}">Acceptable Use</a>
+                <a class="footer-legal" href="{% url 'data_protection' %}">Data Protection</a>
+                <a class="footer-legal" href="{% url 'child_protection' %}">Child Protection</a>
             </div>
         </div>
     </div>
 </footer>
-
-<dialog class="legal-dialog" id="privacyDialog" aria-labelledby="privacyTitle">
-    <div class="dialog-head">
-        <h2 id="privacyTitle">Privacy Policy</h2>
-        <button type="button" class="dialog-close" data-dialog-close aria-label="Close privacy policy"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="dialog-body">
-        <p>{{ school_name }} protects student, parent, and staff information through role-based access and secure authentication.</p>
-        <p>This placeholder policy should be replaced with your institution's approved privacy policy before production use. It should describe what data is collected, how it is used, who can access it, how long it is retained, and how users can request corrections or deletion.</p>
-        <p>For privacy questions, contact <a href="mailto:{{ school_email }}">{{ school_email }}</a>.</p>
-    </div>
-</dialog>
-
-<dialog class="legal-dialog" id="termsDialog" aria-labelledby="termsTitle">
-    <div class="dialog-head">
-        <h2 id="termsTitle">Terms and Conditions</h2>
-        <button type="button" class="dialog-close" data-dialog-close aria-label="Close terms and conditions"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div class="dialog-body">
-        <p>Access to the {{ school_name }} management system is provided to authorized administrators, teachers, students, parents, guardians, and finance staff.</p>
-        <p>This placeholder agreement should be replaced with your institution's approved terms before production use. It should cover acceptable use, account responsibility, data ownership, service availability, and support arrangements.</p>
-        <p>For questions, contact <a href="mailto:{{ school_email }}">{{ school_email }}</a>.</p>
-    </div>
-</dialog>
 
 <dialog class="gallery-dialog" id="galleryDialog" aria-labelledby="galleryDialogTitle">
     <button class="gallery-dialog-close" type="button" data-gallery-close aria-label="Close photo"><i class="bi bi-x-lg"></i></button>

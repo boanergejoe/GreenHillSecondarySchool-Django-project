@@ -7,7 +7,9 @@ A Django-based college and high school management system for **Green Hill Second
 - Role-based authentication and dashboards for administrators, teachers, students, parents, and accountants.
 - Student registration, parent/guardian records, automatic student IDs, student promotion, and profile pages.
 - Teacher records, departments, staff accounts, and role assignment.
-- Academic years, terms, classes, courses, subjects, and enrollments.
+- Academic years with exactly three terms, streamed Senior 3/4 classes, courses, subjects, and enrollments.
+- Department-aware subject allocation for Arts and Science streams.
+- Class-specific fee structures, including differentiated Senior 3/4 tuition pricing.
 - Attendance capture, filtering, summaries, and reporting.
 - Examinations, result entry, result lists, report cards, and PDF report cards.
 - Fee structures, payments, receipts, fee statements, and financial overview.
@@ -16,7 +18,8 @@ A Django-based college and high school management system for **Green Hill Second
 - Excel and PDF exports for students, teachers, attendance, results, and finance.
 - Responsive Bootstrap 5 interface with dashboards and charts.
 - Public premium landing page at `/` with the uploaded school logo, animated sections, testimonials, role overviews, and accessible navigation.
-- Create forms enforce all visible fields as required, excluding generated IDs, checkboxes, and file uploads.
+- Public legal pages for privacy, terms, cookies, acceptable use, data protection, and child protection, with a cookie-consent banner.
+- Create forms enforce all visible fields as required, excluding generated IDs, checkboxes, file uploads, and optional class stream/teacher fields.
 
 ## Technology Stack
 
@@ -43,9 +46,9 @@ python manage.py seed_demo
 python manage.py runserver
 ```
 
-Open `http://127.0.0.1:8000/` for the public landing page, then use **Login** or **Get Started** to access the management system.
+Open `http://127.0.0.1:8000/` for the public landing page, then use **Portal Login** to access the management system.
 
-The included `db.sqlite3` already contains demo data. Both `migrate` and `seed_demo` are safe to run again.
+The local `db.sqlite3` is excluded from Git. Run both `migrate` and `seed_demo` to create it and populate the demo data; both commands are safe to run again.
 
 ## Demo Accounts
 
@@ -85,9 +88,20 @@ python manage.py seed_demo
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DJANGO_SECRET_KEY` | Development key | Production secret key |
+| `DJANGO_SECRET_KEY` | Development key | Required, strong production secret key |
 | `DJANGO_DEBUG` | `True` | Set to `False` in production |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated allowed hosts |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | Comma-separated HTTPS origins, for example `https://school.pythonanywhere.com` |
+| `DJANGO_TRUST_X_FORWARDED_PROTO` | `True` when `DJANGO_DEBUG=False` | Trust the proxy HTTPS scheme header |
+| `DJANGO_SECURE_SSL_REDIRECT` | `True` when debug is off | Force HTTPS |
+| `DJANGO_SECURE_HSTS_SECONDS` | `31536000` | HSTS lifetime; set `0` while testing |
+| `DJANGO_EMAIL_BACKEND` | Console backend | Use `django.core.mail.backends.smtp.EmailBackend` for SMTP |
+| `DJANGO_EMAIL_HOST` | empty | SMTP server |
+| `DJANGO_EMAIL_PORT` | `587` | SMTP port |
+| `DJANGO_EMAIL_USE_TLS` | `True` | Use TLS for SMTP |
+| `DJANGO_EMAIL_HOST_USER` | empty | SMTP username |
+| `DJANGO_EMAIL_HOST_PASSWORD` | empty | SMTP password |
+| `DJANGO_DEFAULT_FROM_EMAIL` | School email | Default sender address |
 | `DB_ENGINE` | `sqlite` | Set to `mysql` for MySQL |
 | `DB_NAME` | `greenhill_school` | MySQL database name |
 | `DB_USER` | `root` | MySQL user |
@@ -108,7 +122,7 @@ python manage.py collectstatic
 
 ## Testing
 
-The integration suite covers the public landing page, required-field create validation, role dashboards, management pages, role-based access restrictions, linked user creation for students/teachers/parents, report exports, receipts, and PDF report cards.
+The integration suite covers the public landing page and legal pages, required-field create validation, term limits and dates, streamed classes, differentiated tuition fees, role dashboards, management pages, role-based access restrictions, linked user creation for students/teachers/parents, report exports, receipts, and PDF report cards.
 
 ```powershell
 python manage.py test
@@ -134,12 +148,97 @@ static/             CSS and JavaScript assets
 media/              Uploaded profile photos and files
 ```
 
+## GitHub and PythonAnywhere Deployment
+
+### 1. Push the project to GitHub
+
+Keep generated and private files out of Git. The included `.gitignore` excludes the virtual environment, SQLite database, `.env`, uploaded media, and collected static files.
+
+```powershell
+git add .
+git commit -m "Prepare Green Hill school system for deployment"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+git push -u origin main
+```
+
+### 2. Set up PythonAnywhere
+
+Open a PythonAnywhere Bash console and clone the repository:
+
+```bash
+cd ~
+git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git greenhill
+cd greenhill
+mkvirtualenv --python=/usr/bin/python3.13 greenhill-venv
+pip install -r requirements.txt
+```
+
+Use the Python version available on your PythonAnywhere account. Django 6.1 requires Python 3.12 or newer.
+
+Create the production environment variables in the Web tab, or set them inside the PythonAnywhere WSGI file:
+
+```python
+import os
+import sys
+
+path = '/home/YOUR_USERNAME/greenhill'
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'greenhill.settings'
+os.environ['DJANGO_DEBUG'] = 'False'
+os.environ['DJANGO_SECRET_KEY'] = 'replace-with-a-long-random-secret-key'
+os.environ['DJANGO_ALLOWED_HOSTS'] = 'YOUR_USERNAME.pythonanywhere.com'
+os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://YOUR_USERNAME.pythonanywhere.com'
+os.environ['DJANGO_TRUST_X_FORWARDED_PROTO'] = 'True'
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+```
+
+In the PythonAnywhere **Web** tab:
+
+- Set the source directory to `/home/YOUR_USERNAME/greenhill`.
+- Set the virtualenv to `/home/YOUR_USERNAME/.virtualenvs/greenhill-venv`.
+- Use the WSGI configuration above.
+- Add static mapping `/static/` to `/home/YOUR_USERNAME/greenhill/staticfiles`.
+- Add media mapping `/media/` to `/home/YOUR_USERNAME/greenhill/media`.
+- Enable HTTPS for the site, then reload it.
+
+Run the database and static-file setup:
+
+```bash
+workon greenhill-venv
+cd ~/greenhill
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py createsuperuser
+```
+
+`seed_demo` is optional on production; use it only if you intentionally want the demonstration students, accounts, and passwords.
+
+### 3. Deploy updates
+
+```bash
+cd ~/greenhill
+git pull
+workon greenhill-venv
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+
+Then click **Reload** in the PythonAnywhere Web tab. The Django admin is available at `/admin/`.
+
 ## Production Notes
 
-- Set a strong `DJANGO_SECRET_KEY` and `DJANGO_DEBUG=False`.
-- Configure `DJANGO_ALLOWED_HOSTS` with the deployed domain or IP.
-- Use MySQL and run `migrate` against the production database.
+- Set a strong `DJANGO_SECRET_KEY` and `DJANGO_DEBUG=False`. The project raises a configuration error if the development key is used with debug disabled.
+- Configure `DJANGO_ALLOWED_HOSTS` and `DJANGO_CSRF_TRUSTED_ORIGINS` with the deployed domain.
+- Use MySQL when it is available on the hosting plan. SQLite works for a low-traffic demonstration but can lock under concurrent writes.
 - Run `python manage.py collectstatic` and serve `staticfiles/` and `media/` through the web server.
-- Serve the application with a production WSGI server behind HTTPS.
+- With `DJANGO_DEBUG=False`, the project enables HTTPS redirects, secure cookies, HSTS, and content-type protection.
+- Set `DJANGO_SECURE_HSTS_SECONDS=0` until HTTPS is confirmed stable, then enable a long HSTS lifetime.
+- Review and customize the public legal policies with the school's approved wording before production use.
 - Change all demo passwords before real use.
-- Keep database backups and uploaded media outside the application release directory.
+- Back up the production database and uploaded media regularly.

@@ -1,14 +1,13 @@
-from django.db.models import Q
 from django.urls import reverse_lazy
 
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
 
 from .forms import (
     AcademicYearForm, CourseForm, DepartmentForm, EnrollmentForm, SchoolClassForm,
-    SemesterForm, SubjectForm,
+    SubjectForm, TermForm,
 )
 from .models import (
-    AcademicYear, Course, Department, Enrollment, SchoolClass, Semester, Subject,
+    AcademicYear, Course, Department, Enrollment, SchoolClass, Subject, Term,
 )
 
 
@@ -83,41 +82,41 @@ class AcademicYearDeleteView(BaseDeleteView):
     cancel_url_name = 'academics:year_list'
 
 
-class SemesterListView(BaseListView):
-    model = Semester
-    page_title = 'Semesters'
+class TermListView(BaseListView):
+    model = Term
+    page_title = 'Terms'
     search_fields = ['name', 'academic_year__name']
     columns = [
-        ('Semester', 'name'), ('Academic Year', 'academic_year.name'),
+        ('Term', 'name'), ('Academic Year', 'academic_year.name'),
         ('Start Date', 'start_date'), ('End Date', 'end_date'), ('Current', 'is_current'),
     ]
-    create_url_name = 'academics:semester_create'
-    edit_url_name = 'academics:semester_update'
-    delete_url_name = 'academics:semester_delete'
-    create_label = 'Add Semester'
+    create_url_name = 'academics:term_create'
+    edit_url_name = 'academics:term_update'
+    delete_url_name = 'academics:term_delete'
+    create_label = 'Add Term'
 
 
-class SemesterCreateView(BaseCreateView):
-    model = Semester
-    form_class = SemesterForm
-    page_title = 'Add Semester'
-    success_url = reverse_lazy('academics:semester_list')
-    cancel_url_name = 'academics:semester_list'
+class TermCreateView(BaseCreateView):
+    model = Term
+    form_class = TermForm
+    page_title = 'Add Term'
+    success_url = reverse_lazy('academics:term_list')
+    cancel_url_name = 'academics:term_list'
 
 
-class SemesterUpdateView(BaseUpdateView):
-    model = Semester
-    form_class = SemesterForm
-    page_title = 'Edit Semester'
-    success_url = reverse_lazy('academics:semester_list')
-    cancel_url_name = 'academics:semester_list'
+class TermUpdateView(BaseUpdateView):
+    model = Term
+    form_class = TermForm
+    page_title = 'Edit Term'
+    success_url = reverse_lazy('academics:term_list')
+    cancel_url_name = 'academics:term_list'
 
 
-class SemesterDeleteView(BaseDeleteView):
-    model = Semester
-    page_title = 'Delete Semester'
-    success_url = reverse_lazy('academics:semester_list')
-    cancel_url_name = 'academics:semester_list'
+class TermDeleteView(BaseDeleteView):
+    model = Term
+    page_title = 'Delete Term'
+    success_url = reverse_lazy('academics:term_list')
+    cancel_url_name = 'academics:term_list'
 
 
 class SchoolClassListView(BaseListView):
@@ -126,9 +125,10 @@ class SchoolClassListView(BaseListView):
     allowed_roles = ('teacher', 'accountant')
     search_fields = ['name', 'level', 'stream', 'room']
     columns = [
-        ('Class', 'name'), ('Level', 'level'), ('Department', 'department.name'),
-        ('Academic Year', 'academic_year.name'), ('Class Teacher', 'class_teacher.display_name'),
-        ('Students', 'student_count'), ('Capacity', 'capacity'),
+        ('Class', 'name'), ('Level', 'level'), ('Stream', 'stream'),
+        ('Department', 'department.name'), ('Academic Year', 'academic_year.name'),
+        ('Class Teacher', 'class_teacher.display_name'), ('Students', 'student_count'),
+        ('Capacity', 'capacity'),
     ]
     create_url_name = 'academics:class_create'
     edit_url_name = 'academics:class_update'
@@ -142,6 +142,7 @@ class SchoolClassCreateView(BaseCreateView):
     page_title = 'Add Class'
     success_url = reverse_lazy('academics:class_list')
     cancel_url_name = 'academics:class_list'
+    required_field_exclusions = ('stream', 'department', 'class_teacher')
 
 
 class SchoolClassUpdateView(BaseUpdateView):
@@ -209,7 +210,7 @@ class SubjectListView(BaseListView):
         ('Code', 'code'), ('Subject', 'name'),
         ('Department(s)', 'department_names'), ('Class', 'school_class.name'),
         ('Teacher', 'teacher.display_name'), ('Academic Year', 'academic_year.name'),
-        ('Active', 'is_active'),
+        ('Term', 'term.name'), ('Active', 'is_active'),
     ]
     create_url_name = 'academics:subject_create'
     edit_url_name = 'academics:subject_update'
@@ -218,7 +219,7 @@ class SubjectListView(BaseListView):
 
     def get_queryset(self):
         qs = Subject.objects.select_related(
-            'school_class', 'teacher', 'academic_year', 'course__department'
+            'school_class', 'teacher', 'academic_year', 'term', 'course__department'
         ).prefetch_related('departments')
         if self.request.user.role == 'teacher':
             qs = qs.filter(teacher=self.request.user)
@@ -256,7 +257,7 @@ class EnrollmentListView(BaseListView):
     columns = [
         ('Student', 'student.user.display_name'), ('Student ID', 'student.student_id'),
         ('Class', 'school_class.name'), ('Academic Year', 'academic_year.name'),
-        ('Semester', 'semester.name'), ('Enrolled On', 'enrolled_on'),
+        ('Term', 'term.name'), ('Enrolled On', 'enrolled_on'),
         ('Active', 'is_active'),
     ]
     create_url_name = 'academics:enrollment_create'

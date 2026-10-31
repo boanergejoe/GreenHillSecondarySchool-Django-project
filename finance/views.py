@@ -9,7 +9,6 @@ from django.urls import reverse_lazy
 from django.utils import timezone
 
 from accounts.mixins import user_has_role
-from academics.models import SchoolClass
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
 from students.models import Student
 
@@ -34,8 +33,8 @@ class FeeListView(BaseListView):
     search_fields = ['name', 'school_class__name', 'academic_year__name']
     columns = [
         ('Fee', 'name'), ('Applies To', 'class_scope'),
-        ('Academic Year', 'academic_year.name'), ('Amount', 'amount'),
-        ('Due Date', 'due_date'), ('Active', 'is_active'),
+        ('Academic Year', 'academic_year.name'), ('Term', 'term.name'),
+        ('Amount', 'amount'), ('Due Date', 'due_date'), ('Active', 'is_active'),
     ]
     create_url_name = 'finance:fee_create'
     edit_url_name = 'finance:fee_update'

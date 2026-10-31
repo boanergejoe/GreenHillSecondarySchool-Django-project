@@ -11,6 +11,12 @@ admin.site.index_title = 'School Management'
 
 urlpatterns = [
     path('', school_views.home, name='home'),
+    path('privacy/', school_views.privacy_policy, name='privacy_policy'),
+    path('terms/', school_views.terms_of_service, name='terms_of_service'),
+    path('cookies/', school_views.cookie_policy, name='cookie_policy'),
+    path('acceptable-use/', school_views.acceptable_use, name='acceptable_use'),
+    path('data-protection/', school_views.data_protection, name='data_protection'),
+    path('child-protection/', school_views.child_protection, name='child_protection'),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('students/', include('students.urls')),

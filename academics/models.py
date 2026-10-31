@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -41,10 +42,15 @@ class AcademicYear(models.Model):
         return reverse('academics:year_list')
 
 
-class Semester(models.Model):
-    name = models.CharField(max_length=50)
+class Term(models.Model):
+    class Name(models.TextChoices):
+        TERM_1 = 'Term 1', 'Term 1'
+        TERM_2 = 'Term 2', 'Term 2'
+        TERM_3 = 'Term 3', 'Term 3'
+
+    name = models.CharField(max_length=50, choices=Name.choices)
     academic_year = models.ForeignKey(
-        AcademicYear, on_delete=models.CASCADE, related_name='semesters'
+        AcademicYear, on_delete=models.CASCADE, related_name='terms'
     )
     start_date = models.DateField()
     end_date = models.DateField()
@@ -57,19 +63,46 @@ class Semester(models.Model):
     def __str__(self):
         return f'{self.name} - {self.academic_year.name}'
 
+    def clean(self):
+        errors = {}
+        if self.start_date and self.end_date and self.end_date <= self.start_date:
+            errors['end_date'] = 'End date must be after the start date.'
+        if self.academic_year_id:
+            if self.start_date and self.start_date < self.academic_year.start_date:
+                errors['start_date'] = 'Term start date must fall within the academic year.'
+            if self.end_date and self.end_date > self.academic_year.end_date:
+                errors['end_date'] = 'Term end date must fall within the academic year.'
+            existing_terms = Term.objects.filter(
+                academic_year_id=self.academic_year_id
+            ).exclude(pk=self.pk)
+            if existing_terms.count() >= 3:
+                errors['academic_year'] = 'An academic year can have at most three terms.'
+        if errors:
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
         if self.is_current:
-            Semester.objects.exclude(pk=self.pk).update(is_current=False)
+            Term.objects.exclude(pk=self.pk).update(is_current=False)
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
-        return reverse('academics:semester_list')
+        return reverse('academics:term_list')
 
 
 class SchoolClass(models.Model):
+    class Level(models.TextChoices):
+        SENIOR_1 = 'Senior 1', 'Senior 1'
+        SENIOR_2 = 'Senior 2', 'Senior 2'
+        SENIOR_3 = 'Senior 3', 'Senior 3'
+        SENIOR_4 = 'Senior 4', 'Senior 4'
+
+    class Stream(models.TextChoices):
+        ARTS = 'Arts', 'Arts'
+        SCIENCE = 'Science', 'Science'
+
     name = models.CharField(max_length=100)
-    level = models.CharField(max_length=50, blank=True, help_text='e.g. Form 1, Year 2')
-    stream = models.CharField(max_length=50, blank=True)
+    level = models.CharField(max_length=50, choices=Level.choices)
+    stream = models.CharField(max_length=50, choices=Stream.choices, blank=True)
     department = models.ForeignKey(
         Department, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='classes',
@@ -97,6 +130,26 @@ class SchoolClass(models.Model):
     @property
     def student_count(self):
         return self.students.filter(status='active').count()
+
+    def clean(self):
+        errors = {}
+        streamed_levels = {self.Level.SENIOR_3, self.Level.SENIOR_4}
+        if self.level in streamed_levels:
+            if self.stream not in self.Stream.values:
+                errors['stream'] = 'Senior 3 and Senior 4 classes require an Arts or Science stream.'
+            if not self.department_id:
+                errors['department'] = 'A streamed class must have a matching department.'
+            elif self.department.code.upper() not in {
+                'ART' if self.stream == self.Stream.ARTS else 'SCI'
+            }:
+                errors['department'] = 'The department must match the selected stream.'
+        else:
+            if self.stream:
+                errors['stream'] = 'Only Senior 3 and Senior 4 classes use a stream.'
+            if self.department_id:
+                errors['department'] = 'Only streamed classes belong to a department.'
+        if errors:
+            raise ValidationError(errors)
 
     def get_absolute_url(self):
         return reverse('academics:class_list')
@@ -146,8 +199,8 @@ class Subject(models.Model):
     academic_year = models.ForeignKey(
         AcademicYear, on_delete=models.CASCADE, related_name='subjects'
     )
-    semester = models.ForeignKey(
-        Semester, on_delete=models.SET_NULL, null=True, blank=True,
+    term = models.ForeignKey(
+        Term, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='subjects',
     )
     description = models.TextField(blank=True)
@@ -174,6 +227,21 @@ class Subject(models.Model):
     def is_dual_department(self):
         return self.departments.count() > 1
 
+    def clean(self):
+        errors = {}
+        if (
+            self.academic_year_id and self.school_class_id
+            and self.school_class.academic_year_id != self.academic_year_id
+        ):
+            errors['school_class'] = 'The class must belong to the selected academic year.'
+        if (
+            self.term_id and self.academic_year_id
+            and self.term.academic_year_id != self.academic_year_id
+        ):
+            errors['term'] = 'The term must belong to the selected academic year.'
+        if errors:
+            raise ValidationError(errors)
+
     def get_absolute_url(self):
         return reverse('academics:subject_list')
 
@@ -188,8 +256,8 @@ class Enrollment(models.Model):
     academic_year = models.ForeignKey(
         AcademicYear, on_delete=models.CASCADE, related_name='enrollments'
     )
-    semester = models.ForeignKey(
-        Semester, on_delete=models.SET_NULL, null=True, blank=True,
+    term = models.ForeignKey(
+        Term, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='enrollments',
     )
     enrolled_on = models.DateField(default=timezone.localdate)
@@ -197,10 +265,25 @@ class Enrollment(models.Model):
 
     class Meta:
         ordering = ['-enrolled_on']
-        unique_together = ('student', 'school_class', 'academic_year', 'semester')
+        unique_together = ('student', 'school_class', 'academic_year', 'term')
 
     def __str__(self):
         return f'{self.student} - {self.school_class}'
+
+    def clean(self):
+        errors = {}
+        if (
+            self.academic_year_id and self.school_class_id
+            and self.school_class.academic_year_id != self.academic_year_id
+        ):
+            errors['school_class'] = 'The class must belong to the selected academic year.'
+        if (
+            self.term_id and self.academic_year_id
+            and self.term.academic_year_id != self.academic_year_id
+        ):
+            errors['term'] = 'The term must belong to the selected academic year.'
+        if errors:
+            raise ValidationError(errors)
 
     def get_absolute_url(self):
         return reverse('academics:enrollment_list')

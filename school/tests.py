@@ -1,11 +1,16 @@
+from datetime import timedelta
+from decimal import Decimal
+
 from django.conf import settings
+from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from academics.access import teacher_classes
-from academics.models import Department, SchoolClass, Subject
+from academics.models import AcademicYear, Department, SchoolClass, Subject, Term
 from accounts.models import User
 from assignments.models import Assignment
 from examinations.models import Examination
@@ -48,7 +53,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             reverse('teachers:teacher_create'),
             reverse('academics:department_list'),
             reverse('academics:year_list'),
-            reverse('academics:semester_list'),
+            reverse('academics:term_list'),
             reverse('academics:class_list'),
             reverse('academics:course_list'),
             reverse('academics:subject_list'),
@@ -67,6 +72,18 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             reverse('reports:class_performance'),
         ]
         for url in urls:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+
+    def test_django_admin_change_lists_render(self):
+        self.login('admin')
+        response = self.client.get(reverse('admin:index'))
+        self.assertEqual(response.status_code, 200)
+
+        for model in admin.site._registry:
+            url = reverse(
+                f'admin:{model._meta.app_label}_{model._meta.model_name}_changelist'
+            )
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200, url)
 
@@ -307,6 +324,126 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertTrue(mathematics.is_dual_department)
         self.assertFalse(biology.is_dual_department)
 
+    def test_seed_creates_three_terms_within_the_academic_year(self):
+        year = AcademicYear.objects.get(name='2026')
+        terms = Term.objects.filter(academic_year=year)
+        self.assertEqual(terms.count(), 3)
+        self.assertEqual(
+            set(terms.values_list('name', flat=True)),
+            {'Term 1', 'Term 2', 'Term 3'},
+        )
+        self.assertEqual(terms.filter(is_current=True).count(), 1)
+        for term in terms:
+            self.assertGreaterEqual(term.start_date, year.start_date)
+            self.assertLessEqual(term.end_date, year.end_date)
+
+    def test_term_validation_rejects_invalid_dates_and_a_fourth_term(self):
+        year = AcademicYear.objects.get(name='2026')
+        invalid_dates = Term(
+            name=Term.Name.TERM_1,
+            academic_year=year,
+            start_date=year.start_date - timedelta(days=1),
+            end_date=year.start_date + timedelta(days=30),
+        )
+        with self.assertRaises(ValidationError):
+            invalid_dates.full_clean()
+
+        fourth_term = Term(
+            name=Term.Name.TERM_1,
+            academic_year=year,
+            start_date=year.start_date,
+            end_date=year.start_date + timedelta(days=30),
+        )
+        with self.assertRaisesMessage(ValidationError, 'at most three terms'):
+            fourth_term.full_clean()
+
+    def test_streamed_and_unstreamed_classes_are_configured_correctly(self):
+        classes = SchoolClass.objects.filter(academic_year__name='2026')
+        self.assertEqual(classes.count(), 6)
+        self.assertFalse(
+            classes.filter(
+                level__in=[SchoolClass.Level.SENIOR_1, SchoolClass.Level.SENIOR_2]
+            ).exclude(stream='', department__isnull=True).exists()
+        )
+        for school_class in classes.filter(
+            level__in=[SchoolClass.Level.SENIOR_3, SchoolClass.Level.SENIOR_4]
+        ):
+            self.assertIn(school_class.stream, SchoolClass.Stream.values)
+            self.assertIsNotNone(school_class.department)
+
+        arts_codes = set(
+            Subject.objects.filter(
+                school_class__name='Senior 3 Arts'
+            ).values_list('code', flat=True)
+        )
+        science_codes = set(
+            Subject.objects.filter(
+                school_class__name='Senior 3 Science'
+            ).values_list('code', flat=True)
+        )
+        shared_codes = {'MATH', 'ENG', 'ICT'}
+        self.assertTrue(shared_codes.issubset(arts_codes))
+        self.assertTrue(shared_codes.issubset(science_codes))
+        self.assertIn('GEO', arts_codes)
+        self.assertNotIn('BIO', arts_codes)
+        self.assertIn('BIO', science_codes)
+        self.assertNotIn('GEO', science_codes)
+
+    def test_senior_classes_have_differentiated_tuition_fees(self):
+        tuition = {
+            fee.school_class.name: fee.amount
+            for fee in Fee.objects.filter(name='Tuition Fee')
+        }
+        self.assertEqual(tuition['Senior 1 A'], Decimal('75000.00'))
+        self.assertEqual(tuition['Senior 2 A'], Decimal('75000.00'))
+        self.assertEqual(tuition['Senior 3 Arts'], Decimal('85000.00'))
+        self.assertEqual(tuition['Senior 3 Science'], Decimal('95000.00'))
+        self.assertEqual(tuition['Senior 4 Arts'], Decimal('90000.00'))
+        self.assertEqual(tuition['Senior 4 Science'], Decimal('100000.00'))
+
+    def test_school_class_create_allows_unstreamed_classes(self):
+        self.login('admin')
+        year = AcademicYear.objects.get(name='2026')
+        response = self.client.post(reverse('academics:class_create'), {
+            'name': 'Senior 1 B',
+            'level': SchoolClass.Level.SENIOR_1,
+            'stream': '',
+            'department': '',
+            'academic_year': year.pk,
+            'class_teacher': '',
+            'capacity': '40',
+            'room': 'Room 5',
+        })
+        self.assertRedirects(response, reverse('academics:class_list'))
+        self.assertTrue(SchoolClass.objects.filter(name='Senior 1 B').exists())
+
+    def test_school_class_create_requires_stream_for_senior_three(self):
+        self.login('admin')
+        year = AcademicYear.objects.get(name='2026')
+        response = self.client.post(reverse('academics:class_create'), {
+            'name': 'Senior 3 Invalid',
+            'level': SchoolClass.Level.SENIOR_3,
+            'stream': '',
+            'department': '',
+            'academic_year': year.pk,
+            'class_teacher': '',
+            'capacity': '40',
+            'room': 'Room 9',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('stream', response.context['form'].errors)
+        self.assertFalse(SchoolClass.objects.filter(name='Senior 3 Invalid').exists())
+
+    def test_legal_pages_render(self):
+        route_names = [
+            'privacy_policy', 'terms_of_service', 'cookie_policy',
+            'acceptable_use', 'data_protection', 'child_protection',
+        ]
+        for name in route_names:
+            response = self.client.get(reverse(name))
+            self.assertEqual(response.status_code, 200, name)
+            self.assertTemplateUsed(response, f'legal/{name}.html')
+
     def test_registration_fee_applies_to_every_student(self):
         registration_fee = Fee.objects.get(
             name='Registration Fee', school_class=None
@@ -332,7 +469,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             'name': 'Library Fund',
             'school_class': '',
             'academic_year': year.pk,
-            'semester': existing_fee.semester_id,
+            'term': existing_fee.term_id,
             'amount': '15000.00',
             'due_date': timezone.localdate().isoformat(),
             'is_active': 'on',

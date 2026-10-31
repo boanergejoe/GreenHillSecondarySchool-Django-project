@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -15,8 +16,8 @@ class Fee(models.Model):
     academic_year = models.ForeignKey(
         'academics.AcademicYear', on_delete=models.CASCADE, related_name='fees'
     )
-    semester = models.ForeignKey(
-        'academics.Semester', on_delete=models.SET_NULL, null=True, blank=True,
+    term = models.ForeignKey(
+        'academics.Term', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='fees',
     )
     amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -50,6 +51,21 @@ class Fee(models.Model):
     @property
     def applies_to_all_classes(self):
         return self.school_class_id is None
+
+    def clean(self):
+        errors = {}
+        if (
+            self.academic_year_id and self.school_class_id
+            and self.school_class.academic_year_id != self.academic_year_id
+        ):
+            errors['school_class'] = 'The class must belong to the selected academic year.'
+        if (
+            self.term_id and self.academic_year_id
+            and self.term.academic_year_id != self.academic_year_id
+        ):
+            errors['term'] = 'The term must belong to the selected academic year.'
+        if errors:
+            raise ValidationError(errors)
 
     def get_absolute_url(self):
         return reverse('finance:fee_list')

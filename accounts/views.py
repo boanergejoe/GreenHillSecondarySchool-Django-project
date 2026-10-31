@@ -178,7 +178,7 @@ def _teacher_dashboard_context(user):
         | Q(subject__school_class__class_teacher=user)
     ).distinct().order_by('-created_at')[:5]
     announcements = Announcement.objects.filter(
-        Q(audience__in=['all', 'teachers']) | Q(audience=Announcement.Audience.ALL),
+        audience__in=[Announcement.Audience.ALL, Announcement.Audience.TEACHERS],
         is_published=True,
     ).order_by('-created_at')[:5]
 
@@ -227,7 +227,7 @@ def _student_dashboard_context(user):
 
     report_cards = Examination.objects.filter(
         results__student=student, is_published=True
-    ).select_related('academic_year', 'semester').distinct().order_by('-start_date')
+    ).select_related('academic_year', 'term').distinct().order_by('-start_date')
 
     subjects = Subject.objects.filter(
         school_class=student.school_class
@@ -236,7 +236,8 @@ def _student_dashboard_context(user):
         subject__in=subjects
     ).select_related('subject').order_by('due_date')[:6]
     announcements = Announcement.objects.filter(
-        Q(audience__in=['all', 'students']), is_published=True
+        audience__in=[Announcement.Audience.ALL, Announcement.Audience.STUDENTS],
+        is_published=True,
     ).order_by('-created_at')[:5]
 
     return {

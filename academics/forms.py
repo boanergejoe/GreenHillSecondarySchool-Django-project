@@ -4,7 +4,7 @@ from accounts.forms import BootstrapFormMixin
 from accounts.models import User
 
 from .models import (
-    AcademicYear, Course, Department, Enrollment, SchoolClass, Semester, Subject,
+    AcademicYear, Course, Department, Enrollment, SchoolClass, Subject, Term,
 )
 
 
@@ -32,9 +32,9 @@ class AcademicYearForm(BootstrapFormMixin, forms.ModelForm):
         return cleaned
 
 
-class SemesterForm(BootstrapFormMixin, forms.ModelForm):
+class TermForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
-        model = Semester
+        model = Term
         fields = ['name', 'academic_year', 'start_date', 'end_date', 'is_current']
         widgets = {'start_date': DATE_WIDGET, 'end_date': DATE_WIDGET}
 
@@ -75,7 +75,7 @@ class SubjectForm(BootstrapFormMixin, forms.ModelForm):
         model = Subject
         fields = [
             'name', 'code', 'course', 'departments', 'school_class', 'teacher',
-            'academic_year', 'semester', 'is_active', 'description',
+            'academic_year', 'term', 'is_active', 'description',
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
@@ -91,16 +91,45 @@ class SubjectForm(BootstrapFormMixin, forms.ModelForm):
         self.fields['school_class'].queryset = SchoolClass.objects.select_related(
             'academic_year'
         ).order_by('name')
-        self.fields['semester'].queryset = Semester.objects.select_related(
+        self.fields['term'].queryset = Term.objects.select_related(
             'academic_year'
         ).order_by('-academic_year__start_date', 'name')
+
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        term = cleaned.get('term')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and term and term.academic_year_id != academic_year.pk:
+            self.add_error('term', 'The term must belong to the selected academic year.')
+        departments = cleaned.get('departments')
+        if school_class and school_class.department_id and departments:
+            if not departments.filter(pk=school_class.department_id).exists():
+                self.add_error(
+                    'departments',
+                    'Streamed classes must offer at least one subject from their department.',
+                )
+        return cleaned
 
 
 class EnrollmentForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Enrollment
         fields = [
-            'student', 'school_class', 'academic_year', 'semester', 'enrolled_on',
+            'student', 'school_class', 'academic_year', 'term', 'enrolled_on',
             'is_active',
         ]
         widgets = {'enrolled_on': DATE_WIDGET}
+
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        term = cleaned.get('term')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and term and term.academic_year_id != academic_year.pk:
+            self.add_error('term', 'The term must belong to the selected academic year.')
+        return cleaned

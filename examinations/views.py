@@ -89,7 +89,7 @@ class ExaminationDeleteView(BaseDeleteView):
 @login_required
 def exam_detail(request, pk):
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'semester', 'school_class'), pk=pk
+        Examination.objects.select_related('academic_year', 'term', 'school_class'), pk=pk
     )
     if (
         request.user.role == 'teacher'
@@ -292,7 +292,7 @@ def report_card(request, student_id, exam_id):
         Student.objects.select_related('user', 'school_class__department'), pk=student_id
     )
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'semester'), pk=exam_id
+        Examination.objects.select_related('academic_year', 'term'), pk=exam_id
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot view this report card.')
@@ -311,7 +311,7 @@ def report_card_pdf(request, student_id, exam_id):
         Student.objects.select_related('user', 'school_class__department'), pk=student_id
     )
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'semester'), pk=exam_id
+        Examination.objects.select_related('academic_year', 'term'), pk=exam_id
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot download this report card.')
@@ -408,8 +408,8 @@ def report_card_pdf(request, student_id, exam_id):
         ['Student', student.full_name, 'Student ID', student.student_id],
         ['Class', student.school_class.name if student.school_class else '-',
          'Department', department],
-        ['Academic Year', exam.academic_year.name, 'Semester',
-         exam.semester.name if exam.semester_id else '-'],
+        ['Academic Year', exam.academic_year.name, 'Term',
+         exam.term.name if exam.term_id else '-'],
         ['Examination', exam.name, 'Generated',
          context['generated_at'].strftime('%d %b %Y')],
     ]
