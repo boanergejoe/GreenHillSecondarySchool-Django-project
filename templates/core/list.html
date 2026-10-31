@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h3>{{ page_title }}</h3>
+        <p>{{ total_count }} record{{ total_count|pluralize }} found</p>
+    </div>
+    {% if create_url_name and can_create %}
+        <a href="{% url create_url_name %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>{{ create_label }}</a>
+    {% endif %}
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="search-box flex-grow-1">
+        <i class="bi bi-search"></i>
+        <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search {{ page_title|lower }}...">
+    </div>
+
+    {% if classes %}
+        <select name="school_class" class="form-select">
+            <option value="">All classes</option>
+            {% for item in classes %}
+                <option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+
+    {% if departments %}
+        <select name="department" class="form-select">
+            <option value="">All departments</option>
+            {% for department in departments %}
+                <option value="{{ department.pk }}" {% if selected_department == department.pk|stringformat:'s' %}selected{% endif %}>{{ department.name }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+
+    {% if status_choices %}
+        <select name="status" class="form-select">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+
+    {% if methods %}
+        <select name="method" class="form-select">
+            <option value="">All methods</option>
+            {% for value, label in methods %}
+                <option value="{{ value }}" {% if selected_method == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    {% endif %}
+
+    {% if selected_date %}
+        <input type="date" name="date" value="{{ selected_date }}" class="form-control">
+    {% endif %}
+
+    <button type="submit" class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{{ request.path }}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    {% for label, attr in columns %}<th>{{ label }}</th>{% endfor %}
+                    {% if detail_url_name or edit_url_name or delete_url_name %}<th class="text-end">Actions</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for obj in objects %}
+                <tr>
+                    {% for label, attr in columns %}
+                        <td>
+                            {% if forloop.first and detail_url_name %}
+                                <a href="{% url detail_url_name obj.pk %}" class="fw-semibold text-dark">{{ obj|get_attr:attr }}</a>
+                            {% elif attr == 'status' or attr == 'is_active' or attr == 'is_current' or attr == 'is_published' %}
+                                {% with value=obj|get_attr:attr %}
+                                    {% if value is True or value == 'Active' or value == 'Present' or value == 'Paid' %}
+                                        <span class="badge bg-success-subtle text-success">{{ value|default:"Yes" }}</span>
+                                    {% elif value is False %}
+                                        <span class="badge bg-secondary-subtle text-secondary">No</span>
+                                    {% else %}
+                                        <span class="badge bg-{{ value|status_class }}-subtle text-{{ value|status_class }}">{{ value }}</span>
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                {{ obj|get_attr:attr }}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    {% if detail_url_name or edit_url_name or delete_url_name %}
+                    <td class="text-end text-nowrap">
+                        {% if detail_url_name %}<a href="{% url detail_url_name obj.pk %}" class="btn btn-sm btn-outline-secondary" title="View"><i class="bi bi-eye"></i></a>{% endif %}
+                        {% if edit_url_name and can_create %}<a href="{% url edit_url_name obj.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>{% endif %}
+                        {% if delete_url_name and can_create %}<a href="{% url delete_url_name obj.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>{% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{{ columns|length|add:1 }}" class="empty-state">
+                        <i class="bi bi-inbox"></i>{{ empty_message }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2 border-top">
+        <small class="text-muted">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}</small>
+        <nav>
+            <ul class="pagination mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+                {% endif %}
+                {% for num in paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

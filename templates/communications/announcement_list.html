@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Announcements{% endblock %}
+{% block page_heading %}Announcements{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>School Announcements</h3><p>Notices, events and important updates</p></div>
+    {% if can_manage %}<a href="{% url 'communications:announcement_create' %}" class="btn btn-primary"><i class="bi bi-megaphone me-1"></i>Publish Announcement</a>{% endif %}
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="search-box flex-grow-1"><i class="bi bi-search"></i><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search announcements..."></div>
+    <button class="btn btn-navy"><i class="bi bi-search me-1"></i>Search</button>
+    <a href="{% url 'communications:announcement_list' %}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="row g-3">
+    {% for announcement in announcements %}
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="activity-item pb-0 border-0">
+                        <div class="dot"><i class="bi bi-megaphone"></i></div>
+                        <div>
+                            <strong class="fs-6">{{ announcement.title }}</strong>
+                            <small>{{ announcement.created_at|date:"d M Y H:i" }} &middot; {{ announcement.get_audience_display }}</small>
+                        </div>
+                    </div>
+                    {% if not announcement.is_published %}<span class="badge bg-secondary-subtle text-secondary">Draft</span>{% endif %}
+                </div>
+                <p class="text-muted mt-3 mb-3">{{ announcement.message|truncatechars:200 }}</p>
+                {% if announcement.event_date %}<span class="badge bg-info-subtle text-info"><i class="bi bi-calendar-event me-1"></i>{{ announcement.event_date|date:"d M Y" }}</span>{% endif %}
+            </div>
+            <div class="card-body border-top d-flex justify-content-between align-items-center">
+                <small class="text-muted">By {{ announcement.created_by.display_name }}</small>
+                <div class="d-flex gap-1">
+                    <a href="{% url 'communications:announcement_detail' announcement.pk %}" class="btn btn-sm btn-primary">Read</a>
+                    {% if can_manage %}
+                    <a href="{% url 'communications:announcement_update' announcement.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                    <a href="{% url 'communications:announcement_delete' announcement.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="card"><div class="empty-state"><i class="bi bi-megaphone"></i>No announcements published.</div></div></div>
+    {% endfor %}
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination justify-content-end">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>{% endif %}
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

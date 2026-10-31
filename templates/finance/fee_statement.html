@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Fee Statement{% endblock %}
+{% block page_heading %}Fee Statement{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Fee Statement</h3><p>{{ student.full_name }} &middot; {{ student.student_id }}</p></div>
+    <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Student Profile</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-cash-stack"></i></div><h3>{{ expected|money }}</h3><p>Total Fees Due</p></div></div>
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-check-circle"></i></div><h3 class="text-success">{{ paid|money }}</h3><p>Total Paid</p></div></div>
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-red"><i class="bi bi-exclamation-circle"></i></div><h3 class="text-danger">{{ balance|money }}</h3><p>Outstanding Balance</p></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Fee Obligations</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Fee</th><th>Amount</th><th>Due</th></tr></thead>
+                    <tbody>
+                    {% for fee in fees %}
+                        <tr><td>{{ fee.name }}</td><td class="fw-semibold">{{ fee.amount|money }}</td><td>{{ fee.due_date|date:"d M Y"|default:"-" }}</td></tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="empty-state"><i class="bi bi-cash-stack"></i>No fees assigned to this student.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h6>Payment History</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Receipt</th><th>Date</th><th>Fee</th><th>Method</th><th>Amount</th><th></th></tr></thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.receipt_number }}</td>
+                            <td>{{ payment.payment_date|date:"d M Y" }}</td>
+                            <td>{{ payment.fee.name|default:"General" }}</td>
+                            <td>{{ payment.get_method_display }}</td>
+                            <td class="fw-semibold text-success">{{ payment.amount|money }}</td>
+                            <td class="text-end"><a href="{% url 'finance:payment_detail' payment.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="6" class="empty-state"><i class="bi bi-receipt"></i>No payments recorded.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

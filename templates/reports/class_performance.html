@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Class Performance{% endblock %}
+{% block page_heading %}Class Performance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Class Performance</h3><p>Average marks and participation by class</p></div>
+    <a href="{% url 'reports:index' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Reports</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <select name="school_class" class="form-select">
+        <option value="">All classes</option>
+        {% for item in classes %}<option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{% url 'reports:class_performance' %}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Class</th><th>Result Entries</th><th>Average Marks</th><th>Highest Marks</th><th>Performance</th></tr></thead>
+            <tbody>
+            {% for row in summary %}
+                <tr>
+                    <td class="fw-semibold">{{ row.subject__school_class__name|default:"Unassigned" }}</td>
+                    <td>{{ row.entries }}</td>
+                    <td>{{ row.average|floatformat:1 }}</td>
+                    <td>{{ row.highest|floatformat:1 }}</td>
+                    <td>
+                        <div class="progress" style="min-width:120px;"><div class="progress-bar bg-primary" style="width: {{ row.average|floatformat:0 }}%"></div></div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty-state"><i class="bi bi-bar-chart"></i>No examination results available.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

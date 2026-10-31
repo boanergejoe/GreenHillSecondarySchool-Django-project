@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Payment {{ payment.receipt_number }}{% endblock %}
+{% block page_heading %}Payment Receipt{% endblock %}
+
+{% block content %}
+<div class="page-header no-print">
+    <div><h3>Payment Receipt</h3><p>{{ payment.receipt_number }}</p></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'finance:payment_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        <a href="{% url 'finance:receipt_pdf' payment.pk %}" class="btn btn-danger"><i class="bi bi-file-earmark-pdf me-1"></i>Download Receipt</a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <div class="text-center border-bottom pb-3 mb-3">
+                    <h3 class="fw-bold mb-1">{{ school_name }}</h3>
+                    <div class="text-muted">{{ school_address }}</div>
+                    <div class="text-muted">{{ school_phone }} &middot; {{ school_email }}</div>
+                    <span class="badge bg-success-subtle text-success mt-2">PAYMENT RECEIVED</span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="detail-list">
+                            <div class="item"><span>Receipt Number</span><strong>{{ payment.receipt_number }}</strong></div>
+                            <div class="item"><span>Payment Date</span><strong>{{ payment.payment_date|date:"d M Y" }}</strong></div>
+                            <div class="item"><span>Method</span><strong>{{ payment.get_method_display }}</strong></div>
+                            <div class="item"><span>Reference</span><strong>{{ payment.reference|default:"-" }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-list">
+                            <div class="item"><span>Student</span><strong>{{ payment.student.full_name }}</strong></div>
+                            <div class="item"><span>Student ID</span><strong>{{ payment.student.student_id }}</strong></div>
+                            <div class="item"><span>Class</span><strong>{{ payment.student.school_class.name|default:"-" }}</strong></div>
+                            <div class="item"><span>Fee</span><strong>{{ payment.fee.name|default:"General payment" }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 rounded-3 bg-light text-center my-4">
+                    <small class="text-muted text-uppercase d-block mb-1">Amount Paid</small>
+                    <strong class="fs-2 text-success">{{ payment.amount|money }}</strong>
+                </div>
+                {% if payment.remarks %}<p class="text-muted small mb-3">Remarks: {{ payment.remarks }}</p>{% endif %}
+                <div class="d-flex justify-content-between text-muted small border-top pt-3">
+                    <span>Received by: {{ payment.recorded_by.display_name|default:"-" }}</span>
+                    <span>Generated {{ payment.created_at|date:"d M Y H:i" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

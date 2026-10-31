@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+
+{% block content %}
+{% if profile_missing %}
+    <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>{{ profile_missing }} Please contact the school administrator.</div>
+{% endif %}
+
+{% if dashboard_type == 'admin' or dashboard_type == 'accountant' %}
+<section class="hero-card mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="hero-label">{% if dashboard_type == 'accountant' %}Finance workspace{% else %}School overview{% endif %}</span>
+            <h3 class="mt-1 mb-2">Welcome back, {{ user.first_name|default:user.username }}.</h3>
+            <p>{% if current_year %}Academic year {{ current_year.name }}{% else %}Set up an academic year to unlock full reporting.{% endif %} &middot; {{ school_location }}</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a href="{% url 'reports:index' %}" class="btn btn-light btn-sm"><i class="bi bi-download me-1"></i> Reports</a>
+            {% if dashboard_type == 'admin' %}
+            <a href="{% url 'students:student_create' %}" class="btn btn-outline-light btn-sm ms-1"><i class="bi bi-person-plus me-1"></i> Register Student</a>
+            {% else %}
+            <a href="{% url 'finance:payment_create' %}" class="btn btn-outline-light btn-sm ms-1"><i class="bi bi-cash me-1"></i> Record Payment</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-soft-blue"><i class="bi bi-people-fill"></i></div>
+            <h3>{{ total_students }}</h3>
+            <p>Total Students</p>
+            <span class="trend text-success"><i class="bi bi-check-circle me-1"></i>{{ active_students }} active</span>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-soft-purple"><i class="bi bi-person-video3"></i></div>
+            <h3>{{ total_teachers }}</h3>
+            <p>Teachers &amp; Lecturers</p>
+            <span class="trend text-muted">Across all departments</span>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-soft-green"><i class="bi bi-door-open"></i></div>
+            <h3>{{ total_classes }}</h3>
+            <p>Classes</p>
+            <span class="trend text-muted">{{ total_subjects }} subjects offered</span>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-soft-cyan"><i class="bi bi-calendar2-check"></i></div>
+            <h3>{{ attendance_rate }}%</h3>
+            <p>Attendance Today</p>
+            <span class="trend text-muted">{{ attendance_total }} records marked</span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <p class="text-uppercase text-muted fw-bold" style="font-size:.68rem;letter-spacing:.08em;">Fees Collected</p>
+            <h3 class="text-success">{{ fee_snapshot.collected_fees_display }}</h3>
+            <p>Total payments received</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <p class="text-uppercase text-muted fw-bold" style="font-size:.68rem;letter-spacing:.08em;">Outstanding</p>
+            <h3 class="text-danger">{{ fee_snapshot.outstanding_fees_display }}</h3>
+            <p>Expected {{ fee_snapshot.expected_fees_display }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <p class="text-uppercase text-muted fw-bold" style="font-size:.68rem;letter-spacing:.08em;">Attendance Breakdown</p>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <span class="badge bg-success-subtle text-success">Present {{ attendance.present }}</span>
+                <span class="badge bg-warning-subtle text-warning">Late {{ attendance.late }}</span>
+                <span class="badge bg-danger-subtle text-danger">Absent {{ attendance.absent }}</span>
+                <span class="badge bg-info-subtle text-info">Excused {{ attendance.excused }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card chart-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6>Fee Collection Trend</h6>
+                <span class="badge bg-primary-subtle text-primary">Last 6 months</span>
+            </div>
+            <div class="card-body"><canvas id="paymentChart"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header"><h6>Students by Class</h6></div>
+            <div class="card-body"><canvas id="classChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6>Recent Payments</h6>
+                <a href="{% url 'finance:payment_list' %}" class="btn btn-sm btn-outline-secondary">View all</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Student</th><th>Receipt</th><th>Amount</th><th>Date</th></tr></thead>
+                    <tbody>
+                    {% for payment in recent_payments %}
+                        <tr>
+                            <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ payment.student.user.initials }}</span><div><strong>{{ payment.student.full_name }}</strong><small>{{ payment.student.student_id }}</small></div></div></td>
+                            <td><span class="text-muted">{{ payment.receipt_number }}</span></td>
+                            <td class="fw-semibold text-success">{{ payment.amount|money }}</td>
+                            <td>{{ payment.payment_date|date:"d M Y" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state"><i class="bi bi-receipt"></i>No payments recorded yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Recent Activities</h6></div>
+            <div class="card-body">
+                {% for student in recent_students %}
+                <div class="activity-item">
+                    <div class="dot"><i class="bi bi-person-plus"></i></div>
+                    <div><strong>{{ student.full_name }}</strong><small>Registered &middot; {{ student.created_at|date:"d M Y" }}</small></div>
+                </div>
+                {% endfor %}
+                {% for announcement in announcements %}
+                <div class="activity-item">
+                    <div class="dot"><i class="bi bi-megaphone"></i></div>
+                    <div><strong>{{ announcement.title }}</strong><small>{{ announcement.created_at|date:"d M Y" }}</small></div>
+                </div>
+                {% endfor %}
+                {% if not recent_students and not announcements %}
+                <div class="empty-state"><i class="bi bi-activity"></i>No recent activity.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif dashboard_type == 'teacher' %}
+<section class="hero-card mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="hero-label">Teacher workspace</span>
+            <h3 class="mt-1 mb-2">Welcome, {{ user.display_name }}.</h3>
+            <p>{{ teacher.department.name|default:"No department assigned" }} &middot; Staff ID {{ teacher.staff_id }}</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a href="{% url 'attendance:take' %}" class="btn btn-light btn-sm"><i class="bi bi-calendar2-check me-1"></i> Record Attendance</a>
+            <a href="{% url 'assignments:create' %}" class="btn btn-outline-light btn-sm ms-1"><i class="bi bi-plus-lg me-1"></i> Assignment</a>
+        </div>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-book"></i></div><h3>{{ subject_count }}</h3><p>Assigned Subjects</p></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-people"></i></div><h3>{{ student_count }}</h3><p>Students Taught</p></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card"><div class="stat-icon bg-soft-amber"><i class="bi bi-calendar-check"></i></div><h3>{{ attendance.present }}</h3><p>Present Marks</p></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-journal-text"></i></div><h3>{{ assignments|length }}</h3><p>Recent Assignments</p></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>My Subjects</h6><a href="{% url 'academics:subject_list' %}" class="btn btn-sm btn-outline-secondary">View all</a></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Subject</th><th>Class</th><th>Code</th></tr></thead>
+                    <tbody>
+                    {% for subject in subjects %}
+                        <tr><td class="fw-semibold">{{ subject.name }}</td><td>{{ subject.school_class.name }}</td><td><span class="badge bg-light text-dark">{{ subject.code }}</span></td></tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="empty-state"><i class="bi bi-book"></i>No subjects assigned yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card chart-card h-100">
+            <div class="card-header"><h6>Attendance Recorded</h6></div>
+            <div class="card-body"><canvas id="teacherAttendanceChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h6>My Students</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Student</th><th>ID</th><th>Class</th><th></th></tr></thead>
+                    <tbody>
+                    {% for student in students %}
+                        <tr>
+                            <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ student.user.initials }}</span><strong>{{ student.full_name }}</strong></div></td>
+                            <td>{{ student.student_id }}</td>
+                            <td>{{ student.school_class.name }}</td>
+                            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'students:student_detail' student.pk %}">View</a></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state"><i class="bi bi-people"></i>No students in your classes.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Announcements</h6></div>
+            <div class="card-body">
+                {% for announcement in announcements %}
+                <div class="activity-item"><div class="dot"><i class="bi bi-megaphone"></i></div><div><strong>{{ announcement.title }}</strong><small>{{ announcement.created_at|date:"d M Y" }}</small></div></div>
+                {% empty %}
+                <div class="empty-state"><i class="bi bi-megaphone"></i>No announcements.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif dashboard_type == 'student' %}
+<section class="hero-card mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="hero-label">Student portal</span>
+            <h3 class="mt-1 mb-2">Hello, {{ student.full_name }}.</h3>
+            <p>{{ student.student_id }} &middot; {{ student.school_class.name|default:"No class assigned" }} &middot; {{ school_name }}</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+            <a href="{% url 'examinations:result_list' %}" class="btn btn-light btn-sm"><i class="bi bi-award me-1"></i> My Results</a>
+            <a href="{% url 'finance:fee_statement' student.pk %}" class="btn btn-outline-light btn-sm ms-1"><i class="bi bi-wallet2 me-1"></i> Fee Statement</a>
+        </div>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-calendar-check"></i></div><h3>{{ attendance_percentage }}%</h3><p>Attendance</p><span class="trend text-muted">{{ attendance_present }}/{{ attendance_total }} days</span></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-book"></i></div><h3>{{ subject_count }}</h3><p>Registered Subjects</p></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-icon bg-soft-amber"><i class="bi bi-wallet2"></i></div><h3 class="fs-5">{{ fee_paid }}</h3><p>Fees Paid</p></div></div>
+    <div class="col-6 col-lg-3"><div class="stat-card"><div class="stat-icon bg-soft-red"><i class="bi bi-exclamation-circle"></i></div><h3 class="fs-5">{{ fee_balance }}</h3><p>Outstanding Balance</p></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Recent Results</h6><a href="{% url 'examinations:result_list' %}" class="btn btn-sm btn-outline-secondary">All results</a></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Subject</th><th>Examination</th><th>Marks</th><th>Grade</th></tr></thead>
+                    <tbody>
+                    {% for result in results %}
+                        <tr><td class="fw-semibold">{{ result.subject.name }}</td><td>{{ result.examination.name }}</td><td>{{ result.marks_obtained }} / {{ result.total_marks }}</td><td><span class="badge bg-primary-subtle text-primary">{{ result.grade }}</span></td></tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state"><i class="bi bi-award"></i>No results published yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card chart-card h-100">
+            <div class="card-header"><h6>Attendance Summary</h6></div>
+            <div class="card-body"><canvas id="studentAttendanceChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6>My Report Cards</h6>
+        <span class="badge bg-success-subtle text-success">{{ report_cards|length }} available</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Examination</th><th>Academic Year</th><th>Term</th><th class="text-end">Download</th></tr></thead>
+            <tbody>
+            {% for report_exam in report_cards %}
+                <tr>
+                    <td class="fw-semibold">{{ report_exam.name }}</td>
+                    <td>{{ report_exam.academic_year.name }}</td>
+                    <td>{{ report_exam.semester.name|default:"-" }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'examinations:report_card' student.pk report_exam.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+                        <a href="{% url 'examinations:report_card_pdf' student.pk report_exam.pk %}" class="btn btn-sm btn-success ms-1">
+                            <i class="bi bi-download me-1"></i>PDF
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="4" class="empty-state"><i class="bi bi-file-earmark-text"></i>No published report cards yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h6>Upcoming Assignments</h6></div>
+            <div class="card-body">
+                {% for assignment in assignments %}
+                <div class="activity-item"><div class="dot"><i class="bi bi-journal-text"></i></div><div><strong>{{ assignment.title }}</strong><small>{{ assignment.subject.name }} &middot; Due {{ assignment.due_date|date:"d M Y H:i" }}</small></div><a class="btn btn-sm btn-outline-secondary ms-auto" href="{% url 'assignments:detail' assignment.pk %}">Open</a></div>
+                {% empty %}
+                <div class="empty-state"><i class="bi bi-journal-check"></i>No pending assignments.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Announcements</h6></div>
+            <div class="card-body">
+                {% for announcement in announcements %}
+                <div class="activity-item"><div class="dot"><i class="bi bi-megaphone"></i></div><div><strong>{{ announcement.title }}</strong><small>{{ announcement.created_at|date:"d M Y" }}</small></div></div>
+                {% empty %}
+                <div class="empty-state"><i class="bi bi-megaphone"></i>No announcements.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif dashboard_type == 'parent' %}
+<section class="hero-card mb-4">
+    <span class="hero-label">Parent portal</span>
+    <h3 class="mt-1 mb-2">Welcome, {{ user.display_name }}.</h3>
+    <p>You are following {{ child_count }} child{{ child_count|pluralize }} at {{ school_name }}.</p>
+</section>
+
+<div class="row g-3">
+    {% for row in children %}
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="avatar avatar-lg avatar-initials">{{ row.student.user.initials }}</span>
+                    <div>
+                        <h5 class="mb-1">{{ row.student.full_name }}</h5>
+                        <div class="text-muted small">{{ row.student.student_id }} &middot; {{ row.student.school_class.name|default:"No class" }}</div>
+                    </div>
+                    <a href="{% url 'students:student_detail' row.student.pk %}" class="btn btn-sm btn-outline-secondary ms-auto">Profile</a>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4"><div class="p-2 rounded-3 bg-light"><small class="text-muted d-block">Attendance</small><strong>{{ row.attendance_percentage }}%</strong></div></div>
+                    <div class="col-4"><div class="p-2 rounded-3 bg-light"><small class="text-muted d-block">Paid</small><strong>{{ row.paid }}</strong></div></div>
+                    <div class="col-4"><div class="p-2 rounded-3 bg-light"><small class="text-muted d-block">Balance</small><strong class="text-danger">{{ row.balance }}</strong></div></div>
+                </div>
+                <div class="progress mb-3"><div class="progress-bar bg-success" style="width: {{ row.attendance_percentage }}%"></div></div>
+                <h6 class="small text-uppercase text-muted">Recent Results</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                        {% for result in row.results %}
+                            <tr><td>{{ result.subject.name }}</td><td>{{ result.examination.name }}</td><td><span class="badge bg-primary-subtle text-primary">{{ result.grade }}</span></td></tr>
+                        {% empty %}
+                            <tr><td class="text-muted">No results yet.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <a href="{% url 'finance:fee_statement' row.student.pk %}" class="btn btn-sm btn-outline-secondary">Fee statement</a>
+                    <a href="{% url 'attendance:report' %}?school_class={{ row.student.school_class_id }}" class="btn btn-sm btn-outline-secondary">Attendance</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="card"><div class="empty-state"><i class="bi bi-person-heart"></i>No children linked to your account yet.</div></div></div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><i class="bi bi-person-x"></i>No dashboard is configured for your role.</div></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if dashboard_type == 'admin' or dashboard_type == 'accountant' %}
+const paymentCtx = document.getElementById('paymentChart');
+if (paymentCtx) {
+    new Chart(paymentCtx, {
+        type: 'line',
+        data: {
+            labels: {{ payment_labels|safe }},
+            datasets: [{
+                label: 'Fees collected',
+                data: {{ payment_values|safe }},
+                borderColor: '#1c5a35',
+                backgroundColor: 'rgba(37, 99, 235, .12)',
+                fill: true,
+                tension: .4,
+                pointRadius: 4,
+                pointBackgroundColor: '#1c5a35'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#e4ece6' } }, x: { grid: { display: false } } } }
+    });
+}
+const classCtx = document.getElementById('classChart');
+if (classCtx) {
+    new Chart(classCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ class_labels|safe }},
+            datasets: [{ data: {{ class_values|safe }}, backgroundColor: ['#143f27','#1c5a35','#2f7a4d','#4c9469','#c9a227','#d4b24a','#8a6b0d','#a8cfb4'], borderWidth: 0 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+    });
+}
+{% elif dashboard_type == 'teacher' %}
+const tCtx = document.getElementById('teacherAttendanceChart');
+if (tCtx) {
+    new Chart(tCtx, {
+        type: 'bar',
+        data: { labels: {{ attendance_labels|safe }}, datasets: [{ data: {{ attendance_values|safe }}, backgroundColor: ['#2f7a4d','#c0392b','#c9a227','#4c9469'], borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#e4ece6' } }, x: { grid: { display: false } } } }
+    });
+}
+{% elif dashboard_type == 'student' %}
+const sCtx = document.getElementById('studentAttendanceChart');
+if (sCtx) {
+    new Chart(sCtx, {
+        type: 'doughnut',
+        data: { labels: {{ attendance_labels|safe }}, datasets: [{ data: {{ attendance_values|safe }}, backgroundColor: ['#2f7a4d','#c0392b','#c9a227','#4c9469'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+    });
+}
+{% endif %}
+</script>
+{% endblock %}

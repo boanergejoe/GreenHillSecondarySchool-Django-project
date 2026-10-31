@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}{{ teacher.full_name }}{% endblock %}
+{% block page_heading %}Teacher Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ teacher.full_name }}</h3><p>{{ teacher.staff_id }}</p></div>
+    {% if user.is_superuser or user.role == 'admin' %}
+    <div>
+        <a href="{% url 'teachers:teacher_update' teacher.pk %}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <a href="{% url 'teachers:teacher_delete' teacher.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i></a>
+    </div>
+    {% endif %}
+</div>
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body text-center p-4">
+                {% if teacher.user.photo %}
+                    <img src="{{ teacher.user.photo.url }}" class="avatar avatar-lg mx-auto d-block" alt="{{ teacher.full_name }}">
+                {% else %}
+                    <span class="avatar avatar-lg avatar-initials mx-auto" style="display:grid;">{{ teacher.user.initials }}</span>
+                {% endif %}
+                <h5 class="mt-3 mb-1">{{ teacher.full_name }}</h5>
+                <span class="badge bg-{{ teacher.get_status_display|status_class }}-subtle text-{{ teacher.get_status_display|status_class }}">{{ teacher.get_status_display }}</span>
+                <hr>
+                <div class="text-start small">
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Department</span><strong>{{ teacher.department.name|default:"-" }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Employment</span><strong>{{ teacher.get_employment_type_display }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Joined</span><strong>{{ teacher.date_joined|date:"d M Y" }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Phone</span><strong>{{ teacher.user.phone|default:"-" }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Email</span><strong>{{ teacher.user.email|default:"-" }}</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><h6>Professional Information</h6></div>
+            <div class="card-body">
+                <div class="detail-list">
+                    <div class="item"><span>Staff ID</span><strong>{{ teacher.staff_id }}</strong></div>
+                    <div class="item"><span>Qualification</span><strong>{{ teacher.qualification|default:"-" }}</strong></div>
+                    <div class="item"><span>Specialization</span><strong>{{ teacher.specialization|default:"-" }}</strong></div>
+                    <div class="item"><span>Office</span><strong>{{ teacher.office|default:"-" }}</strong></div>
+                    <div class="item"><span>Subjects</span><strong>{{ subjects|length }}</strong></div>
+                    <div class="item"><span>Managed Classes</span><strong>{{ managed_classes|length }}</strong></div>
+                </div>
+                {% if teacher.bio %}<hr><p class="mb-0 text-muted">{{ teacher.bio }}</p>{% endif %}
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><h6>Assigned Subjects</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Subject</th><th>Code</th><th>Class</th><th>Academic Year</th></tr></thead>
+                    <tbody>
+                    {% for subject in subjects %}
+                        <tr><td class="fw-semibold">{{ subject.name }}</td><td>{{ subject.code }}</td><td>{{ subject.school_class.name }}</td><td>{{ subject.academic_year.name }}</td></tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state"><i class="bi bi-book"></i>No subjects assigned.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h6>Managed Classes</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Class</th><th>Level</th><th>Academic Year</th><th>Students</th></tr></thead>
+                    <tbody>
+                    {% for item in managed_classes %}
+                        <tr><td class="fw-semibold">{{ item.name }}</td><td>{{ item.level|default:"-" }}</td><td>{{ item.academic_year.name }}</td><td>{{ item.student_count }}</td></tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="empty-state"><i class="bi bi-door-open"></i>No managed classes.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

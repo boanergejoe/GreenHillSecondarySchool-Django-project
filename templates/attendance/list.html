@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Attendance{% endblock %}
+{% block page_heading %}Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Attendance Records</h3><p>Daily and subject attendance history</p></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'attendance:report' %}" class="btn btn-outline-secondary"><i class="bi bi-bar-chart me-1"></i>Report</a>
+        {% if can_record %}<a href="{% url 'attendance:take' %}" class="btn btn-primary"><i class="bi bi-calendar-plus me-1"></i>Record Attendance</a>{% endif %}
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="search-box flex-grow-1"><i class="bi bi-search"></i><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search student..."></div>
+    <select name="school_class" class="form-select">
+        <option value="">All classes</option>
+        {% for item in classes %}<option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <select name="status" class="form-select">
+        <option value="">All statuses</option>
+        {% for value, label in status_choices %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <input type="date" name="date" value="{{ selected_date }}" class="form-control">
+    <button class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{% url 'attendance:list' %}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Subject</th><th>Status</th><th>Recorded By</th></tr></thead>
+            <tbody>
+            {% for record in records %}
+                <tr>
+                    <td>{{ record.date|date:"d M Y" }}</td>
+                    <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ record.student.user.initials }}</span><div><strong>{{ record.student.full_name }}</strong><small>{{ record.student.student_id }}</small></div></div></td>
+                    <td>{{ record.school_class.name }}</td>
+                    <td>{{ record.subject.name|default:"Daily" }}</td>
+                    <td><span class="badge bg-{{ record.status_badge }}-subtle text-{{ record.status_badge }}">{{ record.get_status_display }}</span></td>
+                    <td>{{ record.recorded_by.display_name|default:"-" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty-state"><i class="bi bi-calendar-x"></i>No attendance records found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+    <div class="card-body border-top"><nav><ul class="pagination mb-0 justify-content-end">
+        {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>{% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>{% endif %}
+    </ul></nav></div>
+    {% endif %}
+</div>
+{% endblock %}

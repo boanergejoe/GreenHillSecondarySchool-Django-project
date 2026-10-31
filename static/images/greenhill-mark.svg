@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Green Hill Secondary School">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101c3a"/>
+      <stop offset=".55" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cffafe"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <path d="M32 15 53 25 32 35 11 25 32 15Z" fill="url(#cap)"/>
+  <path d="M20 30v10.5c0 3.7 5.4 6.5 12 6.5s12-2.8 12-6.5V30l-12 6-12-6Z" fill="#ffffff" opacity=".2"/>
+  <path d="M51 28v12" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/>
+  <circle cx="51" cy="43" r="2.5" fill="#a5f3fc"/>
+</svg>

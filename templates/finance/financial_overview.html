@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Financial Overview{% endblock %}
+{% block page_heading %}Financial Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Financial Overview</h3><p>Payments and collection analysis</p></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reports:export_finance' 'excel' %}" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+        <a href="{% url 'reports:export_finance' 'pdf' %}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+    <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+    <button class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{% url 'finance:financial_overview' %}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-cash-coin"></i></div><h3>{{ total|money }}</h3><p>Total Collected</p></div></div>
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-receipt"></i></div><h3>{{ payment_count }}</h3><p>Payments Recorded</p></div></div>
+    <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-bank"></i></div><h3>{{ by_method|length }}</h3><p>Payment Methods Used</p></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Collections by Method</h6></div>
+            <div class="card-body">
+                {% for item in by_method %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1"><span>{{ item.method|title }}</span><strong>{{ item.total|money }}</strong></div>
+                    <div class="progress"><div class="progress-bar bg-primary" style="width: {% widthratio item.total total 100 %}%"></div></div>
+                </div>
+                {% empty %}
+                <div class="empty-state"><i class="bi bi-pie-chart"></i>No payment data.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header"><h6>Collections by Class</h6></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Class</th><th>Total Collected</th></tr></thead>
+                    <tbody>
+                    {% for item in by_class %}
+                        <tr><td>{{ item.student__school_class__name|default:"Unassigned" }}</td><td class="fw-semibold text-success">{{ item.total|money }}</td></tr>
+                    {% empty %}
+                        <tr><td colspan="2" class="empty-state">No payment data.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header"><h6>Recent Transactions</h6></div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Receipt</th><th>Student</th><th>Fee</th><th>Method</th><th>Amount</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for payment in recent %}
+                <tr><td><a href="{% url 'finance:payment_detail' payment.pk %}">{{ payment.receipt_number }}</a></td><td>{{ payment.student.full_name }}</td><td>{{ payment.fee.name|default:"General" }}</td><td>{{ payment.get_method_display }}</td><td class="fw-semibold">{{ payment.amount|money }}</td><td>{{ payment.payment_date|date:"d M Y" }}</td></tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty-state">No transactions found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

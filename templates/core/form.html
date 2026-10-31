@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h3>{{ page_title }}</h3>
+        <p>Complete the form below and save your changes.</p>
+    </div>
+    {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>{% endif %}
+</div>
+
+<div class="card form-card">
+    <div class="card-body p-4">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="{% if field.field.widget.input_type == 'textarea' or field.name in 'address,description,message,bio,remarks,medical_notes,feedback,comment' %}full{% endif %}">
+                        {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check mt-2">
+                                {{ field }}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            </div>
+                        {% else %}
+                            <label class="form-label" for="{{ field.id_for_label }}">
+                                {{ field.label }}{% if field.field.required %}<span class="required-star">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                        {% endif %}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|striptags }}</div>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="form-actions">
+                {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-outline-secondary">Cancel</a>{% endif %}
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications{% endblock %}
+{% block page_heading %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Notifications</h3><p>Your latest school updates</p></div>
+    <form method="post" action="{% url 'communications:notification_read_all' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-check2-all me-1"></i>Mark all as read</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="list-group list-group-flush">
+        {% for notification in notifications %}
+            <div class="list-group-item d-flex gap-3 align-items-start {% if not notification.is_read %}bg-primary-subtle{% endif %}">
+                <div class="stat-icon bg-soft-blue mb-0" style="width:40px;height:40px;font-size:1rem;"><i class="bi bi-bell"></i></div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between gap-2">
+                        <strong>{{ notification.title }}</strong>
+                        <small class="text-muted text-nowrap">{{ notification.created_at|date:"d M Y H:i" }}</small>
+                    </div>
+                    {% if notification.message %}<p class="text-muted small mb-1">{{ notification.message }}</p>{% endif %}
+                    {% if not notification.is_read %}<span class="badge bg-primary-subtle text-primary">New</span>{% endif %}
+                </div>
+                <a href="{% url 'communications:notification_read' notification.pk %}" class="btn btn-sm btn-outline-secondary">Open</a>
+            </div>
+        {% empty %}
+            <div class="empty-state"><i class="bi bi-bell-slash"></i>You have no notifications.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

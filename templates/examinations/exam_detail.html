@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ exam.name }}{% endblock %}
+{% block page_heading %}Examination{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ exam.name }}</h3><p>{{ exam.get_exam_type_display }} &middot; {{ exam.academic_year.name }}</p></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'examinations:result_list' %}?examination={{ exam.pk }}" class="btn btn-outline-secondary"><i class="bi bi-list-check me-1"></i>All Results</a>
+        {% if user.is_superuser or user.role == 'admin' %}
+        <a href="{% url 'examinations:exam_update' exam.pk %}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Class</small><strong>{{ exam.school_class.name|default:"All classes" }}</strong></div></div>
+    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Start Date</small><strong>{{ exam.start_date|date:"d M Y" }}</strong></div></div>
+    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">End Date</small><strong>{{ exam.end_date|date:"d M Y" }}</strong></div></div>
+    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Results Recorded</small><strong>{{ result_count }}</strong></div></div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h6>Subjects &amp; Result Entry</h6></div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Subject</th><th>Code</th><th>Class</th><th>Teacher</th><th>Results</th><th class="text-end">Action</th></tr></thead>
+            <tbody>
+            {% for subject in subjects %}
+                <tr>
+                    <td class="fw-semibold">{{ subject.name }}</td>
+                    <td>{{ subject.code }}</td>
+                    <td>{{ subject.school_class.name }}</td>
+                    <td>{{ subject.teacher.display_name|default:"-" }}</td>
+                    <td><span class="badge bg-light text-dark">{{ subject.result_count }}</span></td>
+                    <td class="text-end">
+                        {% if user.is_superuser or user.role == 'admin' or user.role == 'teacher' %}
+                        <a href="{% url 'examinations:enter_results' exam.pk %}?subject={{ subject.pk }}" class="btn btn-sm btn-primary"><i class="bi bi-pencil-square me-1"></i>Enter Marks</a>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="empty-state"><i class="bi bi-book"></i>No subjects available for this examination.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

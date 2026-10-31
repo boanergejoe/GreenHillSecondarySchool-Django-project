@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Report{% endblock %}
+{% block page_heading %}Attendance Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Attendance Report</h3><p>Attendance percentages by student</p></div>
+    <a href="{% url 'attendance:list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Records</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <select name="school_class" class="form-select">
+        <option value="">All classes</option>
+        {% for item in classes %}<option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <input type="date" name="start_date" value="{{ start_date }}" class="form-control">
+    <input type="date" name="end_date" value="{{ end_date }}" class="form-control">
+    <button class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{% url 'attendance:report' %}" class="btn btn-outline-secondary">Reset</a>
+    <a href="{% url 'reports:export_attendance' 'excel' %}" class="btn btn-outline-success ms-auto"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+    <a href="{% url 'reports:export_attendance' 'pdf' %}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Student</th><th>Student ID</th><th>Class</th><th>Total</th><th>Present</th><th>Absent</th><th>Late</th><th>Excused</th><th>Percentage</th></tr></thead>
+            <tbody>
+            {% for row in summary %}
+                <tr>
+                    <td class="fw-semibold">{{ row.student__user__first_name }} {{ row.student__user__last_name }}</td>
+                    <td>{{ row.student__student_id }}</td>
+                    <td>{{ row.school_class__name }}</td>
+                    <td>{{ row.total }}</td>
+                    <td>{{ row.present }}</td>
+                    <td>{{ row.absent }}</td>
+                    <td>{{ row.late }}</td>
+                    <td>{{ row.excused }}</td>
+                    <td style="min-width:140px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1"><div class="progress-bar {% if row.percentage >= 75 %}bg-success{% elif row.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ row.percentage }}%"></div></div>
+                            <strong class="small">{{ row.percentage }}%</strong>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="9" class="empty-state"><i class="bi bi-bar-chart"></i>No attendance data found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

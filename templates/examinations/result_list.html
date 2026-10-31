@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Examination Results{% endblock %}
+{% block page_heading %}Examination Results{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Examination Results</h3><p>Results, grades and report cards</p></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'reports:export_results' 'excel' %}" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Excel</a>
+        <a href="{% url 'reports:export_results' 'pdf' %}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="search-box flex-grow-1"><i class="bi bi-search"></i><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search student..."></div>
+    <select name="examination" class="form-select">
+        <option value="">All examinations</option>
+        {% for exam in examinations %}<option value="{{ exam.pk }}" {% if selected_exam == exam.pk|stringformat:'s' %}selected{% endif %}>{{ exam.name }}</option>{% endfor %}
+    </select>
+    <select name="school_class" class="form-select">
+        <option value="">All classes</option>
+        {% for item in classes %}<option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+    </select>
+    <select name="subject" class="form-select">
+        <option value="">All subjects</option>
+        {% for subject in subjects %}<option value="{{ subject.pk }}" {% if selected_subject == subject.pk|stringformat:'s' %}selected{% endif %}>{{ subject.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-navy"><i class="bi bi-funnel me-1"></i>Filter</button>
+    <a href="{% url 'examinations:result_list' %}" class="btn btn-outline-secondary">Reset</a>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Examination</th><th>Student</th><th>Class</th><th>Subject</th><th>Marks</th><th>Percentage</th><th>Grade</th><th class="text-end">Report</th></tr></thead>
+            <tbody>
+            {% for result in results %}
+                <tr>
+                    <td>{{ result.examination.name }}</td>
+                    <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ result.student.user.initials }}</span><div><strong>{{ result.student.full_name }}</strong><small>{{ result.student.student_id }}</small></div></div></td>
+                    <td>{{ result.subject.school_class.name }}</td>
+                    <td>{{ result.subject.name }}</td>
+                    <td>{{ result.marks_obtained }} / {{ result.total_marks }}</td>
+                    <td>{{ result.percentage }}%</td>
+                    <td><span class="badge bg-primary-subtle text-primary">{{ result.grade }}</span></td>
+                    <td class="text-end text-nowrap">
+                        <a href="{% url 'examinations:report_card' result.student_id result.examination_id %}" class="btn btn-sm btn-outline-secondary" title="View report card"><i class="bi bi-file-earmark-text"></i></a>
+                        <a href="{% url 'examinations:report_card_pdf' result.student_id result.examination_id %}" class="btn btn-sm btn-outline-success" title="Download report card PDF"><i class="bi bi-download"></i></a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8" class="empty-state"><i class="bi bi-award"></i>No results found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

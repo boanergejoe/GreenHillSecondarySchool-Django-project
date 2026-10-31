@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Review Submission{% endblock %}
+{% block page_heading %}Review Submission{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Review Submission</h3><p>{{ submission.student.full_name }} &middot; {{ submission.assignment.title }}</p></div>
+    <a href="{% url 'assignments:detail' submission.assignment_id %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><h6>Submission</h6></div>
+            <div class="card-body">
+                <div class="detail-list">
+                    <div class="item"><span>Student</span><strong>{{ submission.student.full_name }}</strong></div>
+                    <div class="item"><span>Student ID</span><strong>{{ submission.student.student_id }}</strong></div>
+                    <div class="item"><span>Submitted</span><strong>{{ submission.submitted_at|date:"d M Y H:i" }}</strong></div>
+                    <div class="item"><span>Status</span><strong>{{ submission.get_status_display }}</strong></div>
+                </div>
+                {% if submission.comment %}<p class="text-muted mt-3">{{ submission.comment }}</p>{% endif %}
+                {% if submission.file %}<a href="{{ submission.file.url }}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-download me-1"></i>Download Submission</a>{% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><h6>Grade &amp; Feedback</h6></div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|striptags }}</div>{% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="form-actions">
+                        <a href="{% url 'assignments:detail' submission.assignment_id %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save Review</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

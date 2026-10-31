@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}Record Attendance{% endblock %}
+{% block page_heading %}Record Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Record Attendance</h3><p>Select a class and date to mark students</p></div>
+    <a href="{% url 'attendance:list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Class</label>
+                <select name="school_class" class="form-select" required>
+                    <option value="">Select class</option>
+                    {% for item in classes %}<option value="{{ item.pk }}" {% if selected_class == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Subject (optional)</label>
+                <select name="subject" class="form-select">
+                    <option value="">Daily attendance</option>
+                    {% for subject in subjects %}<option value="{{ subject.pk }}" {% if selected_subject == subject.pk|stringformat:'s' %}selected{% endif %}>{{ subject.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" name="date" value="{{ selected_date }}" class="form-control">
+            </div>
+            <div class="col-md-2 d-grid"><button class="btn btn-navy"><i class="bi bi-arrow-repeat me-1"></i>Load</button></div>
+        </form>
+    </div>
+</div>
+
+{% if school_class %}
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="school_class" value="{{ selected_class }}">
+    <input type="hidden" name="date" value="{{ selected_date }}">
+    <input type="hidden" name="subject" value="{{ selected_subject }}">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6>{{ school_class.name }} &middot; {{ selected_date }}</h6>
+            <span class="badge bg-primary-subtle text-primary">{{ students|length }} students</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Student</th><th>Student ID</th><th>Status</th><th>Remarks</th></tr></thead>
+                <tbody>
+                {% for student in students %}
+                    {% with record=existing|dict_get:student.id %}
+                    <tr>
+                        <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ student.user.initials }}</span><strong>{{ student.full_name }}</strong></div></td>
+                        <td>{{ student.student_id }}</td>
+                        <td style="min-width:150px;">
+                            <select name="status_{{ student.pk }}" class="form-select form-select-sm">
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if record and record.status == value %}selected{% elif not record and value == 'present' %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="text" name="remarks_{{ student.pk }}" value="{{ record.remarks|default:'' }}" class="form-control form-control-sm" placeholder="Optional"></td>
+                    </tr>
+                    {% endwith %}
+                {% empty %}
+                    <tr><td colspan="4" class="empty-state"><i class="bi bi-people"></i>No active students in this class.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if students %}
+        <div class="card-body border-top text-end">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save Attendance</button>
+        </div>
+        {% endif %}
+    </div>
+</form>
+{% else %}
+<div class="card"><div class="empty-state"><i class="bi bi-calendar-plus"></i>Select a class to begin recording attendance.</div></div>
+{% endif %}
+{% endblock %}

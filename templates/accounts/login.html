@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign In{% endblock %}
+
+{% block auth_content %}
+<div class="auth-shell">
+    <section class="auth-brand">
+        <div>
+            <div class="d-flex align-items-center gap-3">
+                {% include 'includes/brand_mark.html' %}
+                <div>
+                    <h2 class="h5 mb-0 fw-bold">{{ school_name }}</h2>
+                    <small class="text-white-50">{{ school_location }}</small>
+                </div>
+            </div>
+            <h1>School Management<br>System</h1>
+            <p>A modern, secure platform for managing students, teachers, academics, examinations, attendance and finances in one place.</p>
+            <div class="auth-feature"><i class="bi bi-shield-check"></i><span>Role-based access for administrators, teachers, students, parents and accountants.</span></div>
+            <div class="auth-feature"><i class="bi bi-graph-up"></i><span>Live dashboards, analytics and downloadable reports.</span></div>
+            <div class="auth-feature"><i class="bi bi-journal-check"></i><span>Attendance, results, fees and assignments fully connected.</span></div>
+        </div>
+        <small class="text-white-50">{{ school_motto }}</small>
+    </section>
+
+    <section class="auth-panel">
+        <div class="auth-card">
+            <div class="d-lg-none d-flex align-items-center gap-2 mb-4">
+                {% include 'includes/brand_mark.html' %}
+                <div>
+                    <strong class="d-block">{{ school_name }}</strong>
+                    <small class="text-muted">{{ school_location }}</small>
+                </div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary mb-3">Secure sign in</span>
+            <h2 class="h3 mb-1">Welcome back</h2>
+            <p class="text-muted mb-4">Sign in to access your school dashboard.</p>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors|striptags }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                    {{ form.password }}
+                    {% if form.password.errors %}<div class="text-danger small mt-1">{{ form.password.errors|striptags }}</div>{% endif %}
+                </div>
+                {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+                <button type="submit" class="btn btn-primary w-100 py-2 mt-2">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign in
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <div>{{ school_name }} &middot; {{ school_location }}</div>
+                <div class="mt-1">Need help? {{ school_phone }} &middot; {{ school_email }}</div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

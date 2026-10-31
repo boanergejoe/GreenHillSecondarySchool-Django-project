@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}{{ student.full_name }}{% endblock %}
+{% block page_heading %}Student Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Student Profile</h3><p>{{ student.student_id }}</p></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'finance:fee_statement' student.pk %}" class="btn btn-outline-secondary"><i class="bi bi-wallet2 me-1"></i>Fee Statement</a>
+        {% if user.is_superuser or user.role == 'admin' %}
+        <a href="{% url 'students:student_update' student.pk %}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <a href="{% url 'students:student_delete' student.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i></a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-body text-center p-4">
+                {% if student.user.photo %}
+                    <img src="{{ student.user.photo.url }}" class="avatar avatar-lg mx-auto d-block" alt="{{ student.full_name }}">
+                {% else %}
+                    <span class="avatar avatar-lg avatar-initials mx-auto" style="display:grid;">{{ student.user.initials }}</span>
+                {% endif %}
+                <h5 class="mt-3 mb-1">{{ student.full_name }}</h5>
+                <div class="text-muted small mb-2">{{ student.student_id }}</div>
+                <span class="badge bg-{{ student.get_status_display|status_class }}-subtle text-{{ student.get_status_display|status_class }}">{{ student.get_status_display }}</span>
+                <hr>
+                <div class="text-start small">
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Class</span><strong>{{ student.school_class.name|default:"Not assigned" }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Gender</span><strong>{{ student.get_gender_display }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Age</span><strong>{{ student.age|default:"-" }}</strong></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Admitted</span><strong>{{ student.admission_date|date:"d M Y" }}</strong></div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between small mb-1"><span class="text-muted">Attendance</span><strong>{{ attendance_percentage }}%</strong></div>
+                    <div class="progress"><div class="progress-bar bg-success" style="width: {{ attendance_percentage }}%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><h6>Guardian</h6></div>
+            <div class="card-body small">
+                {% if student.parent %}
+                    <div class="fw-semibold">{{ student.parent.user.display_name }}</div>
+                    <div class="text-muted">{{ student.parent.get_relationship_display }}</div>
+                    <div class="mt-2"><i class="bi bi-telephone me-1"></i>{{ student.parent.user.phone|default:"-" }}</div>
+                    <div><i class="bi bi-envelope me-1"></i>{{ student.parent.user.email|default:"-" }}</div>
+                {% else %}
+                    <div class="fw-semibold">{{ student.guardian_name|default:"Not provided" }}</div>
+                    <div><i class="bi bi-telephone me-1"></i>{{ student.guardian_phone|default:"-" }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><h6>Personal Information</h6></div>
+            <div class="card-body">
+                <div class="detail-list">
+                    <div class="item"><span>Full Name</span><strong>{{ student.full_name }}</strong></div>
+                    <div class="item"><span>Student ID</span><strong>{{ student.student_id }}</strong></div>
+                    <div class="item"><span>Date of Birth</span><strong>{{ student.date_of_birth|date:"d M Y"|default:"-" }}</strong></div>
+                    <div class="item"><span>Blood Group</span><strong>{{ student.blood_group|default:"-" }}</strong></div>
+                    <div class="item"><span>Email</span><strong>{{ student.user.email|default:"-" }}</strong></div>
+                    <div class="item"><span>Phone</span><strong>{{ student.user.phone|default:"-" }}</strong></div>
+                    <div class="item"><span>Address</span><strong>{{ student.address|default:"-" }}</strong></div>
+                    <div class="item"><span>Medical Notes</span><strong>{{ student.medical_notes|default:"None" }}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Examination Results</h6><a href="{% url 'examinations:result_list' %}?q={{ student.student_id }}" class="btn btn-sm btn-outline-secondary">View all</a></div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Examination</th><th>Subject</th><th>Marks</th><th>Grade</th><th></th></tr></thead>
+                    <tbody>
+                    {% for result in results %}
+                        <tr>
+                            <td>{{ result.examination.name }}</td>
+                            <td>{{ result.subject.name }}</td>
+                            <td>{{ result.marks_obtained }} / {{ result.total_marks }}</td>
+                            <td><span class="badge bg-primary-subtle text-primary">{{ result.grade }}</span></td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'examinations:report_card' student.pk result.examination_id %}">Report card</a>
+                                <a class="btn btn-sm btn-outline-success" href="{% url 'examinations:report_card_pdf' student.pk result.examination_id %}" title="Download report card PDF"><i class="bi bi-download"></i></a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="empty-state"><i class="bi bi-award"></i>No results recorded.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header"><h6>Recent Attendance</h6></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                            {% for record in attendance %}
+                                <tr><td>{{ record.date|date:"d M Y" }}</td><td>{{ record.subject.name|default:"Daily" }}</td><td><span class="badge bg-{{ record.status_badge }}-subtle text-{{ record.status_badge }}">{{ record.get_status_display }}</span></td></tr>
+                            {% empty %}
+                                <tr><td class="text-muted">No attendance records.</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header"><h6>Recent Payments</h6></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                            {% for payment in payments %}
+                                <tr><td>{{ payment.receipt_number }}</td><td>{{ payment.amount|money }}</td><td>{{ payment.payment_date|date:"d M Y" }}</td></tr>
+                            {% empty %}
+                                <tr><td class="text-muted">No payments recorded.</td></tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

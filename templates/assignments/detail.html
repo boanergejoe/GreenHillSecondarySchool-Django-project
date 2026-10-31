@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load school_extras %}
+
+{% block title %}{{ assignment.title }}{% endblock %}
+{% block page_heading %}Assignment{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ assignment.title }}</h3><p>{{ assignment.subject.name }} &middot; {{ assignment.subject.school_class.name }}</p></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'assignments:list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        {% if user.is_superuser or user.role == 'admin' or user.role == 'teacher' %}
+            {% if assignment.created_by_id == user.id or user.is_superuser or user.role == 'admin' %}
+            <a href="{% url 'assignments:update' assignment.pk %}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+            <a href="{% url 'assignments:delete' assignment.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash"></i></a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6>Assignment Details</h6>
+                {% if assignment.is_overdue %}<span class="badge bg-danger-subtle text-danger">Overdue</span>{% else %}<span class="badge bg-success-subtle text-success">Open</span>{% endif %}
+            </div>
+            <div class="card-body">
+                <p>{{ assignment.description|linebreaksbr|default:"No description provided." }}</p>
+                <div class="detail-list mt-3">
+                    <div class="item"><span>Subject</span><strong>{{ assignment.subject.name }}</strong></div>
+                    <div class="item"><span>Class</span><strong>{{ assignment.subject.school_class.name }}</strong></div>
+                    <div class="item"><span>Due Date</span><strong>{{ assignment.due_date|date:"d M Y H:i" }}</strong></div>
+                    <div class="item"><span>Maximum Score</span><strong>{{ assignment.max_score }}</strong></div>
+                    <div class="item"><span>Created By</span><strong>{{ assignment.created_by.display_name }}</strong></div>
+                    <div class="item"><span>Published</span><strong>{% if assignment.is_published %}Yes{% else %}No{% endif %}</strong></div>
+                </div>
+                {% if assignment.attachment %}
+                <a href="{{ assignment.attachment.url }}" class="btn btn-outline-secondary mt-3" target="_blank"><i class="bi bi-download me-1"></i>Download Learning Material</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        {% if is_student %}
+        <div class="card">
+            <div class="card-header"><h6>My Submission</h6></div>
+            <div class="card-body">
+                {% if submission %}
+                    <div class="mb-2"><span class="badge bg-{{ submission.get_status_display|status_class }}-subtle text-{{ submission.get_status_display|status_class }}">{{ submission.get_status_display }}</span></div>
+                    <div class="small text-muted mb-2">Submitted {{ submission.submitted_at|date:"d M Y H:i" }}</div>
+                    {% if submission.file %}<a href="{{ submission.file.url }}" class="btn btn-sm btn-outline-secondary mb-2" target="_blank"><i class="bi bi-file-earmark me-1"></i>My file</a>{% endif %}
+                    {% if submission.score %}<div class="mt-2"><span class="text-muted">Score:</span> <strong>{{ submission.score }}</strong></div>{% endif %}
+                    {% if submission.feedback %}<div class="alert alert-info mt-2 small mb-0">{{ submission.feedback }}</div>{% endif %}
+                    <a href="{% url 'assignments:submit' assignment.pk %}" class="btn btn-sm btn-primary mt-3 w-100">Update Submission</a>
+                {% else %}
+                    <p class="text-muted small">You have not submitted this assignment yet.</p>
+                    <a href="{% url 'assignments:submit' assignment.pk %}" class="btn btn-primary w-100"><i class="bi bi-upload me-1"></i>Submit Assignment</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="card {% if is_student %}mt-3{% endif %}">
+            <div class="card-header"><h6>Summary</h6></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Submissions</span><strong>{{ assignment.submission_count }}</strong></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Max Score</span><strong>{{ assignment.max_score }}</strong></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Due</span><strong>{{ assignment.due_date|date:"d M Y" }}</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if can_manage %}
+<div class="card mt-3">
+    <div class="card-header"><h6>Student Submissions</h6></div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Student</th><th>Submitted</th><th>Status</th><th>Score</th><th class="text-end">Action</th></tr></thead>
+            <tbody>
+            {% for item in submissions %}
+                <tr>
+                    <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ item.student.user.initials }}</span><div><strong>{{ item.student.full_name }}</strong><small>{{ item.student.student_id }}</small></div></div></td>
+                    <td>{{ item.submitted_at|date:"d M Y H:i" }}</td>
+                    <td><span class="badge bg-{{ item.get_status_display|status_class }}-subtle text-{{ item.get_status_display|status_class }}">{{ item.get_status_display }}</span></td>
+                    <td>{{ item.score|default:"-" }}</td>
+                    <td class="text-end"><a href="{% url 'assignments:review' item.pk %}" class="btn btn-sm btn-primary">Review</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty-state"><i class="bi bi-inbox"></i>No submissions yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
