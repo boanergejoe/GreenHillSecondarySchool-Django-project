@@ -480,6 +480,8 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertTemplateUsed(response, 'landing/home.html')
         self.assertContains(response, 'Knowledge. Integrity.')
         self.assertContains(response, 'Admissions enquiries')
+        self.assertContains(response, 'previous class or school results')
+        self.assertContains(response, 'confirm any additional requirements')
         self.assertContains(response, 'Term dates')
         self.assertContains(response, 'Current curriculum subjects')
         self.assertContains(response, settings.SCHOOL_NAME)
