@@ -6,6 +6,8 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
+from academics.models import Term
+
 
 class Fee(models.Model):
     name = models.CharField(max_length=150)
@@ -16,9 +18,8 @@ class Fee(models.Model):
     academic_year = models.ForeignKey(
         'academics.AcademicYear', on_delete=models.CASCADE, related_name='fees'
     )
-    term = models.ForeignKey(
-        'academics.Term', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='fees',
+    term = models.CharField(
+        max_length=50, choices=Term.Name.choices, blank=True, default=''
     )
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.TextField(blank=True)
@@ -59,11 +60,6 @@ class Fee(models.Model):
             and self.school_class.academic_year_id != self.academic_year_id
         ):
             errors['school_class'] = 'The class must belong to the selected academic year.'
-        if (
-            self.term_id and self.academic_year_id
-            and self.term.academic_year_id != self.academic_year_id
-        ):
-            errors['term'] = 'The term must belong to the selected academic year.'
         if errors:
             raise ValidationError(errors)
 

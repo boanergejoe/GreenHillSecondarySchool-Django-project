@@ -8,8 +8,8 @@ class FeeAdmin(admin.ModelAdmin):
     list_display = ('name', 'school_class', 'academic_year', 'term', 'amount', 'due_date', 'is_active')
     list_filter = ('academic_year', 'term', 'school_class', 'is_active')
     search_fields = ('name', 'school_class__name')
-    autocomplete_fields = ('school_class', 'academic_year', 'term')
-    list_select_related = ('school_class', 'academic_year', 'term')
+    autocomplete_fields = ('school_class', 'academic_year')
+    list_select_related = ('school_class', 'academic_year')
     date_hierarchy = 'due_date'
 
 

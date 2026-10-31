@@ -33,7 +33,7 @@ class FeeListView(BaseListView):
     search_fields = ['name', 'school_class__name', 'academic_year__name']
     columns = [
         ('Fee', 'name'), ('Applies To', 'class_scope'),
-        ('Academic Year', 'academic_year.name'), ('Term', 'term.name'),
+        ('Academic Year', 'academic_year.name'), ('Term', 'term'),
         ('Amount', 'amount'), ('Due Date', 'due_date'), ('Active', 'is_active'),
     ]
     create_url_name = 'finance:fee_create'

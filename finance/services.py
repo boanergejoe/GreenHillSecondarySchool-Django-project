@@ -19,7 +19,7 @@ def active_fees_for_student(student):
         ).values_list('pk', flat=True).first()
     if academic_year_id:
         fees = fees.filter(academic_year_id=academic_year_id)
-    return fees.select_related('school_class', 'academic_year', 'term')
+    return fees.select_related('school_class', 'academic_year')
 
 
 def fee_totals_for_student(student):

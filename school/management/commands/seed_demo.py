@@ -92,7 +92,7 @@ class Command(BaseCommand):
             school_class=None,
             academic_year=year,
             defaults={
-                'term': current_term,
+                'term': current_term.name,
                 'amount': Decimal('25000.00'),
                 'due_date': today.replace(month=2, day=20),
                 'is_active': True,
@@ -372,7 +372,7 @@ class Command(BaseCommand):
                 school_class=school_class,
                 academic_year=year,
                 defaults={
-                    'term': current_term,
+                    'term': current_term.name,
                     'amount': tuition_by_class[school_class.name],
                     'due_date': today.replace(month=3, day=15),
                     'is_active': True,
@@ -384,7 +384,7 @@ class Command(BaseCommand):
                 school_class=school_class,
                 academic_year=year,
                 defaults={
-                    'term': current_term,
+                    'term': current_term.name,
                     'amount': Decimal('15000.00'),
                     'due_date': today.replace(month=4, day=10),
                     'is_active': True,

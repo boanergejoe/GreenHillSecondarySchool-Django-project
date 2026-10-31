@@ -1,6 +1,6 @@
 from django import forms
 
-from academics.models import AcademicYear, SchoolClass, Term
+from academics.models import AcademicYear, SchoolClass
 from accounts.forms import BootstrapFormMixin
 from students.models import Student
 
@@ -10,18 +10,7 @@ from .models import Fee, Payment
 DATE_WIDGET = forms.DateInput(attrs={'type': 'date'})
 
 
-class FeeTermField(forms.ModelChoiceField):
-    def label_from_instance(self, term):
-        return term.name
-
-
 class FeeForm(BootstrapFormMixin, forms.ModelForm):
-    term = FeeTermField(
-        queryset=Term.objects.all(),
-        required=False,
-        widget=forms.RadioSelect(),
-    )
-
     class Meta:
         model = Fee
         fields = [
@@ -46,11 +35,8 @@ class FeeForm(BootstrapFormMixin, forms.ModelForm):
         cleaned = super().clean()
         academic_year = cleaned.get('academic_year')
         school_class = cleaned.get('school_class')
-        term = cleaned.get('term')
         if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
             self.add_error('school_class', 'The class must belong to the selected academic year.')
-        if academic_year and term and term.academic_year_id != academic_year.pk:
-            self.add_error('term', 'The term must belong to the selected academic year.')
         return cleaned
 
 

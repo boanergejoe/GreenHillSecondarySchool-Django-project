@@ -417,14 +417,12 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             (fee_form, 'term'),
         ):
             self.assertIsInstance(form.fields[field_name].widget, forms.RadioSelect)
-        fee_term_choices = [
-            (str(value), label)
-            for value, label in fee_form.fields['term'].choices
-            if value
-        ]
         self.assertEqual(
-            fee_term_choices,
-            [(str(term.pk), term.name) for term in Term.objects.all()],
+            [
+                choice for choice in fee_form.fields['term'].choices
+                if choice[0]
+            ],
+            list(Term.Name.choices),
         )
 
     def test_student_portal_displays_class_and_department(self):
@@ -575,13 +573,18 @@ class GreenHillSecondaryIntegrationTests(TestCase):
 
     def test_fee_create_accepts_universal_fee_without_class(self):
         self.login('accountant')
+        form_response = self.client.get(reverse('finance:fee_create'))
+        self.assertContains(form_response, 'Term 1')
+        self.assertContains(form_response, 'Term 2')
+        self.assertContains(form_response, 'Term 3')
+
         existing_fee = Fee.objects.first()
         year = existing_fee.academic_year
         response = self.client.post(reverse('finance:fee_create'), {
             'name': 'Library Fund',
             'school_class': '',
             'academic_year': year.pk,
-            'term': existing_fee.term_id,
+            'term': existing_fee.term,
             'amount': '15000.00',
             'due_date': timezone.localdate().isoformat(),
             'is_active': 'on',
