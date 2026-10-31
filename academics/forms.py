@@ -36,7 +36,11 @@ class TermForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Term
         fields = ['name', 'academic_year', 'start_date', 'end_date', 'is_current']
-        widgets = {'start_date': DATE_WIDGET, 'end_date': DATE_WIDGET}
+        widgets = {
+            'name': forms.RadioSelect(),
+            'start_date': DATE_WIDGET,
+            'end_date': DATE_WIDGET,
+        }
 
     def clean(self):
         cleaned = super().clean()
@@ -78,6 +82,7 @@ class SubjectForm(BootstrapFormMixin, forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3}),
             'departments': forms.CheckboxSelectMultiple(),
             'school_classes': forms.CheckboxSelectMultiple(),
+            'term': forms.RadioSelect(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -146,7 +151,10 @@ class EnrollmentForm(BootstrapFormMixin, forms.ModelForm):
             'student', 'school_class', 'academic_year', 'term', 'enrolled_on',
             'is_active',
         ]
-        widgets = {'enrolled_on': DATE_WIDGET}
+        widgets = {
+            'term': forms.RadioSelect(),
+            'enrolled_on': DATE_WIDGET,
+        }
 
     def clean(self):
         cleaned = super().clean()

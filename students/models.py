@@ -60,6 +60,10 @@ class Student(models.Model):
         'academics.SchoolClass', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='students',
     )
+    department = models.ForeignKey(
+        'academics.Department', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='students',
+    )
     parent = models.ForeignKey(
         Parent, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='children',

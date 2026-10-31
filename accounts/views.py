@@ -206,7 +206,9 @@ def _student_dashboard_context(user):
     from examinations.models import Examination
     from students.models import Student
 
-    student = getattr(user, 'student_profile', None)
+    student = Student.objects.select_related(
+        'school_class', 'department'
+    ).filter(user=user).first()
     if not student:
         return {'profile_missing': 'No student profile is linked to your account.'}
 

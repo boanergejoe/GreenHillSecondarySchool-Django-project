@@ -3,7 +3,7 @@ from django.db import transaction
 
 from accounts.forms import BootstrapFormMixin, UserAccountFormMixin
 from accounts.models import User
-from academics.models import Enrollment, SchoolClass, Term
+from academics.models import Department, Enrollment, SchoolClass, Term
 
 from .models import Parent, Student
 
@@ -35,9 +35,9 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Student
         fields = [
-            'student_id', 'school_class', 'parent', 'admission_date', 'date_of_birth',
-            'gender', 'status', 'address', 'guardian_name', 'guardian_phone',
-            'blood_group', 'medical_notes',
+            'student_id', 'school_class', 'department', 'parent', 'admission_date',
+            'date_of_birth', 'gender', 'status', 'address', 'guardian_name',
+            'guardian_phone', 'blood_group', 'medical_notes',
         ]
         widgets = {
             'admission_date': forms.DateInput(attrs={'type': 'date'}),
@@ -50,9 +50,11 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['student_id'].help_text = 'Leave blank to generate automatically.'
         self.fields['parent'].queryset = Parent.objects.select_related('user')
+        self.fields['department'].required = True
         self.fields['school_class'].queryset = SchoolClass.objects.select_related(
             'academic_year'
         ).order_by('name')
+        self.fields['department'].queryset = Department.objects.order_by('name')
         enrollment_terms = []
         if self.instance.pk and self.instance.school_class_id:
             enrollment_terms = list(Enrollment.objects.filter(

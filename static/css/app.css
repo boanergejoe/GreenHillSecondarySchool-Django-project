@@ -421,7 +421,8 @@ a { text-decoration: none; }
     font-size: .86rem;
     cursor: pointer;
 }
-.checkbox-options input[type="checkbox"] {
+.checkbox-options input[type="checkbox"],
+.checkbox-options input[type="radio"] {
     width: 1rem;
     height: 1rem;
     margin: 0;

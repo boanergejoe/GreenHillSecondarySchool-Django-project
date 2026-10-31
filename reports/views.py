@@ -114,15 +114,19 @@ def reports_index(request):
 
 @role_required('accountant')
 def export_students(request, fmt):
-    students = Student.objects.select_related('user', 'school_class')
+    students = Student.objects.select_related('user', 'school_class', 'department')
     class_id = request.GET.get('school_class', '')
     if class_id:
         students = students.filter(school_class_id=class_id)
-    headers = ['Student ID', 'Full Name', 'Class', 'Gender', 'Status', 'Admission Date', 'Email', 'Phone']
+    headers = [
+        'Student ID', 'Full Name', 'Class', 'Department', 'Gender', 'Status',
+        'Admission Date', 'Email', 'Phone',
+    ]
     rows = [
         [
             student.student_id, student.full_name,
             student.school_class.name if student.school_class else '',
+            student.department.name if student.department else '',
             student.get_gender_display(), student.get_status_display(),
             student.admission_date.strftime('%Y-%m-%d'), student.user.email, student.user.phone,
         ]

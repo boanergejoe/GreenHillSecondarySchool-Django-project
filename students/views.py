@@ -34,12 +34,13 @@ class StudentListView(BaseListView):
     allowed_roles = ('teacher', 'accountant')
     search_fields = [
         'student_id', 'user__first_name', 'user__last_name', 'user__email',
-        'user__username',
+        'user__username', 'department__name',
     ]
     columns = [
         ('Student ID', 'student_id'),
         ('Full Name', 'user.display_name'),
         ('Class', 'school_class.name'),
+        ('Department', 'department.name'),
         ('Gender', 'get_gender_display'),
         ('Status', 'get_status_display'),
         ('Admitted', 'admission_date'),
@@ -52,7 +53,7 @@ class StudentListView(BaseListView):
     create_roles = ('accountant',)
 
     def get_queryset(self):
-        qs = Student.objects.select_related('user', 'school_class')
+        qs = Student.objects.select_related('user', 'school_class', 'department')
         q = self.request.GET.get('q', '').strip()
         class_id = self.request.GET.get('school_class', '').strip()
         status = self.request.GET.get('status', '').strip()
@@ -135,7 +136,9 @@ class StudentDetailView(DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Student.objects.select_related('user', 'school_class', 'parent__user')
+        return Student.objects.select_related(
+            'user', 'school_class', 'department', 'parent__user'
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

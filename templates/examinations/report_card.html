@@ -47,7 +47,7 @@
             <div class="report-info-item"><span>Student</span><strong>{{ student.full_name }}</strong></div>
             <div class="report-info-item"><span>Student ID</span><strong>{{ student.student_id }}</strong></div>
             <div class="report-info-item"><span>Class</span><strong>{{ student.school_class.name|default:"-" }}</strong></div>
-            <div class="report-info-item"><span>Department</span><strong>{{ student.school_class.department.name|default:"General" }}</strong></div>
+            <div class="report-info-item"><span>Department</span><strong>{{ student.department.name|default:"General" }}</strong></div>
             <div class="report-info-item"><span>Academic Year</span><strong>{{ exam.academic_year.name }}</strong></div>
             <div class="report-info-item"><span>Term</span><strong>{{ exam.term.name|default:"-" }}</strong></div>
             <div class="report-info-item"><span>Examination</span><strong>{{ exam.name }}</strong></div>

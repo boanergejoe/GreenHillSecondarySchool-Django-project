@@ -13,11 +13,17 @@ class EnrollmentInline(admin.TabularInline):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('student_id', 'user', 'school_class', 'gender', 'status', 'admission_date')
-    list_filter = ('status', 'gender', 'school_class')
-    search_fields = ('student_id', 'user__first_name', 'user__last_name', 'user__email')
-    autocomplete_fields = ('user', 'school_class', 'parent')
-    list_select_related = ('user', 'school_class', 'parent')
+    list_display = (
+        'student_id', 'user', 'school_class', 'department', 'gender', 'status',
+        'admission_date',
+    )
+    list_filter = ('status', 'gender', 'school_class', 'department')
+    search_fields = (
+        'student_id', 'user__first_name', 'user__last_name', 'user__email',
+        'department__name',
+    )
+    autocomplete_fields = ('user', 'school_class', 'department', 'parent')
+    list_select_related = ('user', 'school_class', 'department', 'parent')
     date_hierarchy = 'admission_date'
     list_per_page = 25
     inlines = [EnrollmentInline]

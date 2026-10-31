@@ -1,6 +1,6 @@
 from django import forms
 
-from academics.models import AcademicYear, SchoolClass
+from academics.models import AcademicYear, SchoolClass, Term
 from accounts.forms import BootstrapFormMixin
 from students.models import Student
 
@@ -10,7 +10,18 @@ from .models import Fee, Payment
 DATE_WIDGET = forms.DateInput(attrs={'type': 'date'})
 
 
+class FeeTermField(forms.ModelChoiceField):
+    def label_from_instance(self, term):
+        return term.name
+
+
 class FeeForm(BootstrapFormMixin, forms.ModelForm):
+    term = FeeTermField(
+        queryset=Term.objects.all(),
+        required=False,
+        widget=forms.RadioSelect(),
+    )
+
     class Meta:
         model = Fee
         fields = [
@@ -18,6 +29,7 @@ class FeeForm(BootstrapFormMixin, forms.ModelForm):
             'due_date', 'is_active', 'description',
         ]
         widgets = {
+            'term': forms.RadioSelect(),
             'due_date': DATE_WIDGET,
             'description': forms.Textarea(attrs={'rows': 3}),
         }

@@ -16,7 +16,11 @@ class ExaminationForm(BootstrapFormMixin, forms.ModelForm):
             'name', 'exam_type', 'academic_year', 'term', 'school_class',
             'start_date', 'end_date', 'total_marks', 'is_published',
         ]
-        widgets = {'start_date': DATE_WIDGET, 'end_date': DATE_WIDGET}
+        widgets = {
+            'term': forms.RadioSelect(),
+            'start_date': DATE_WIDGET,
+            'end_date': DATE_WIDGET,
+        }
 
     def clean(self):
         cleaned = super().clean()

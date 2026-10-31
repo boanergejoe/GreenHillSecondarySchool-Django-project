@@ -11,13 +11,15 @@ from django.urls import reverse
 from django.utils import timezone
 
 from academics.access import teacher_classes
-from academics.forms import SubjectForm
+from academics.forms import EnrollmentForm, SubjectForm, TermForm
 from academics.models import (
     AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
 )
 from accounts.models import User
 from assignments.models import Assignment
+from examinations.forms import ExaminationForm
 from examinations.models import Examination
+from finance.forms import FeeForm
 from finance.models import Fee, Payment
 from finance.services import active_fees_for_student
 from students.forms import StudentForm
@@ -186,6 +188,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.login('admin')
         school_class = SchoolClass.objects.first()
         parent = Parent.objects.first()
+        department = Department.objects.get(code='ART')
         terms = list(Term.objects.filter(
             academic_year=school_class.academic_year
         ).order_by('name')[:2])
@@ -198,6 +201,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             'password': 'Student@12345',
             'student_id': '',
             'school_class': school_class.pk,
+            'department': department.pk,
             'term': [term.name for term in terms],
             'parent': parent.pk,
             'admission_date': timezone.localdate().isoformat(),
@@ -215,6 +219,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(user.role, User.Role.STUDENT)
         self.assertTrue(user.check_password('Student@12345'))
         self.assertEqual(user.student_profile.school_class, school_class)
+        self.assertEqual(user.student_profile.department, department)
         enrollments = Enrollment.objects.filter(student=user.student_profile)
         self.assertEqual(enrollments.count(), len(terms))
         self.assertSetEqual(
@@ -295,7 +300,8 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         required_fields = (
             'username', 'first_name', 'last_name', 'email', 'phone', 'password',
             'school_class', 'parent', 'admission_date', 'date_of_birth', 'gender',
-            'term', 'status', 'address', 'guardian_name', 'guardian_phone', 'blood_group',
+            'department', 'term', 'status', 'address', 'guardian_name',
+            'guardian_phone', 'blood_group',
             'medical_notes',
         )
         for name in required_fields:
@@ -387,6 +393,10 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         expected = list(Term.Name.choices)
         subject_form = SubjectForm()
         student_form = StudentForm()
+        term_form = TermForm()
+        enrollment_form = EnrollmentForm()
+        examination_form = ExaminationForm()
+        fee_form = FeeForm()
         self.assertEqual(
             [
                 choice for choice in subject_form.fields['term'].choices
@@ -399,6 +409,32 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             type(student_form.fields['term'].widget),
             type(subject_form.fields['school_classes'].widget),
         )
+        for form, field_name in (
+            (term_form, 'name'),
+            (subject_form, 'term'),
+            (enrollment_form, 'term'),
+            (examination_form, 'term'),
+            (fee_form, 'term'),
+        ):
+            self.assertIsInstance(form.fields[field_name].widget, forms.RadioSelect)
+        fee_term_choices = [
+            (str(value), label)
+            for value, label in fee_form.fields['term'].choices
+            if value
+        ]
+        self.assertEqual(
+            fee_term_choices,
+            [(str(term.pk), term.name) for term in Term.objects.all()],
+        )
+
+    def test_student_portal_displays_class_and_department(self):
+        user = self.login('student1')
+        student = user.student_profile
+        response = self.client.get(reverse('accounts:dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'Class: {student.school_class.name}')
+        self.assertContains(response, f'Department: {student.department.name}')
 
     def test_seed_creates_three_terms_within_the_academic_year(self):
         year = AcademicYear.objects.get(name='2026')

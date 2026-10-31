@@ -258,7 +258,7 @@
         <div class="col-lg-8">
             <span class="hero-label">Student portal</span>
             <h3 class="mt-1 mb-2">Hello, {{ student.full_name }}.</h3>
-            <p>{{ student.student_id }} &middot; {{ student.school_class.name|default:"No class assigned" }} &middot; {{ school_name }}</p>
+            <p>{{ student.student_id }} &middot; Class: {{ student.school_class.name|default:"Not assigned" }} &middot; Department: {{ student.department.name|default:"Not assigned" }} &middot; {{ school_name }}</p>
         </div>
         <div class="col-lg-4 text-lg-end">
             <a href="{% url 'examinations:result_list' %}" class="btn btn-light btn-sm"><i class="bi bi-award me-1"></i> My Results</a>

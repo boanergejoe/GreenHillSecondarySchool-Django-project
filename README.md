@@ -5,7 +5,7 @@ A Django-based college and high school management system for **Green Hill Second
 ## Features
 
 - Role-based authentication and dashboards for administrators, teachers, students, parents, and accountants.
-- Student registration, parent/guardian records, automatic student IDs, student promotion, and profile pages.
+- Student registration with independent class and department assignments, parent/guardian records, automatic student IDs, student promotion, and profile pages.
 - Teacher records, departments, staff accounts, and role assignment.
 - Academic years with three fixed term names, streamed Senior 3/4 classes, subjects, and student enrollments across selected terms.
 - Subjects can be assigned to multiple school classes and departments.

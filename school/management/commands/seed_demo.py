@@ -312,15 +312,17 @@ class Command(BaseCommand):
             parents.append(parent)
 
         student_data = [
-            ('student1', 'Ajak', 'Malo', 'female', classes[0], parents[0]),
-            ('student2', 'Bol', 'Malo', 'male', classes[0], parents[0]),
-            ('student3', 'Chol', 'Nyibol', 'male', classes[0], parents[1]),
-            ('student4', 'Adut', 'Nyibol', 'female', classes[1], parents[1]),
-            ('student5', 'Lual', 'Lual', 'male', classes[1], parents[2]),
-            ('student6', 'Akuol', 'Lual', 'female', classes[1], parents[2]),
+            ('student1', 'Ajak', 'Malo', 'female', classes[0], parents[0], arts),
+            ('student2', 'Bol', 'Malo', 'male', classes[0], parents[0], sciences),
+            ('student3', 'Chol', 'Nyibol', 'male', classes[0], parents[1], arts),
+            ('student4', 'Adut', 'Nyibol', 'female', classes[1], parents[1], sciences),
+            ('student5', 'Lual', 'Lual', 'male', classes[1], parents[2], arts),
+            ('student6', 'Akuol', 'Lual', 'female', classes[1], parents[2], sciences),
         ]
         students = []
-        for index, (username, first, last, gender, school_class, parent) in enumerate(
+        for index, (
+            username, first, last, gender, school_class, parent, department,
+        ) in enumerate(
             student_data, start=1
         ):
             student_user = self._user(
@@ -332,6 +334,7 @@ class Command(BaseCommand):
                 defaults={
                     'student_id': f'GSS-2026-{index:03d}',
                     'school_class': school_class,
+                    'department': department,
                     'parent': parent,
                     'admission_date': today.replace(month=2, day=5),
                     'date_of_birth': today.replace(year=today.year - (14 + index), month=5, day=10),

@@ -306,7 +306,8 @@ def _can_access_report_card(user, student):
 @login_required
 def report_card(request, student_id, exam_id):
     student = get_object_or_404(
-        Student.objects.select_related('user', 'school_class__department'), pk=student_id
+        Student.objects.select_related('user', 'school_class', 'department'),
+        pk=student_id,
     )
     exam = get_object_or_404(
         Examination.objects.select_related('academic_year', 'term'), pk=exam_id
@@ -325,7 +326,8 @@ def report_card_pdf(request, student_id, exam_id):
         return redirect('examinations:report_card', student_id=student_id, exam_id=exam_id)
 
     student = get_object_or_404(
-        Student.objects.select_related('user', 'school_class__department'), pk=student_id
+        Student.objects.select_related('user', 'school_class', 'department'),
+        pk=student_id,
     )
     exam = get_object_or_404(
         Examination.objects.select_related('academic_year', 'term'), pk=exam_id
@@ -417,10 +419,7 @@ def report_card_pdf(request, student_id, exam_id):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
     ]))
 
-    department = (
-        student.school_class.department.name
-        if student.school_class and student.school_class.department_id else '-'
-    )
+    department = student.department.name if student.department else '-'
     info_data = [
         ['Student', student.full_name, 'Student ID', student.student_id],
         ['Class', student.school_class.name if student.school_class else '-',
