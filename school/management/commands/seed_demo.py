@@ -197,6 +197,9 @@ class Command(BaseCommand):
             )
             classes.append(school_class)
 
+        for index, teacher in enumerate(teachers):
+            teacher.assigned_classes.set(classes[index::len(teachers)])
+
         for legacy_class in SchoolClass.objects.filter(
             academic_year=year, name__in=['Senior 3 A', 'Senior 4 A']
         ).exclude(pk__in=[school_class.pk for school_class in classes]):

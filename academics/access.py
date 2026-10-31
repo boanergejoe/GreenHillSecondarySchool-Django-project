@@ -5,7 +5,9 @@ from .models import SchoolClass, Subject
 
 def teacher_classes(user):
     return SchoolClass.objects.filter(
-        Q(subjects__teacher=user) | Q(class_teacher=user)
+        Q(subjects__teacher=user)
+        | Q(class_teacher=user)
+        | Q(assigned_teachers__user=user)
     ).distinct()
 
 
@@ -15,7 +17,9 @@ def teacher_class_ids(user):
 
 def teacher_subjects(user):
     return Subject.objects.filter(
-        Q(teacher=user) | Q(school_classes__class_teacher=user)
+        Q(teacher=user)
+        | Q(school_classes__class_teacher=user)
+        | Q(school_classes__assigned_teachers__user=user)
     ).distinct()
 
 
@@ -31,4 +35,5 @@ def teacher_can_manage_assignment(user, assignment):
         assignment.created_by_id == user.id
         or subject.teacher_id == user.id
         or subject.school_classes.filter(class_teacher_id=user.id).exists()
+        or subject.school_classes.filter(assigned_teachers__user=user).exists()
     )

@@ -148,7 +148,7 @@ def _admin_dashboard_context():
 
 
 def _teacher_dashboard_context(user):
-    from academics.models import Subject
+    from academics.access import teacher_subjects
     from assignments.models import Assignment
     from attendance.models import Attendance
     from communications.models import Announcement
@@ -159,7 +159,7 @@ def _teacher_dashboard_context(user):
     if not teacher:
         return {'profile_missing': 'No teacher profile is linked to your account.'}
 
-    subjects = Subject.objects.filter(teacher=user).prefetch_related('school_classes')
+    subjects = teacher_subjects(user).prefetch_related('school_classes')
     classes = teacher_classes(user)
     students = Student.objects.filter(
         school_class__in=classes, status=Student.Status.ACTIVE
@@ -176,6 +176,7 @@ def _teacher_dashboard_context(user):
         Q(created_by=user)
         | Q(subject__teacher=user)
         | Q(subject__school_classes__class_teacher=user)
+        | Q(subject__school_classes__assigned_teachers__user=user)
     ).distinct().order_by('-created_at')[:5]
     announcements = Announcement.objects.filter(
         audience__in=[Announcement.Audience.ALL, Announcement.Audience.TEACHERS],

@@ -234,6 +234,12 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_teacher_create_form_creates_linked_user(self):
         self.login('admin')
         department = Department.objects.first()
+        school_classes = list(SchoolClass.objects.all()[:2])
+        form_response = self.client.get(reverse('teachers:teacher_create'))
+        self.assertContains(form_response, 'Classes to teach')
+        for school_class in school_classes:
+            self.assertContains(form_response, school_class.name)
+
         response = self.client.post(reverse('teachers:teacher_create'), {
             'username': 'newteacher',
             'first_name': 'John',
@@ -243,6 +249,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             'password': 'Teacher@12345',
             'staff_id': '',
             'department': department.pk,
+            'assigned_classes': [school_class.pk for school_class in school_classes],
             'qualification': 'BSc Education',
             'specialization': 'Mathematics',
             'employment_type': 'full_time',
@@ -256,6 +263,30 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(user.role, User.Role.TEACHER)
         self.assertTrue(user.check_password('Teacher@12345'))
         self.assertIsInstance(user.teacher_profile, Teacher)
+        self.assertSetEqual(
+            set(user.teacher_profile.assigned_classes.all()), set(school_classes)
+        )
+        self.assertTrue(set(school_classes).issubset(set(teacher_classes(user))))
+
+    def test_teacher_create_requires_at_least_one_class(self):
+        self.login('admin')
+        response = self.client.post(reverse('teachers:teacher_create'), {
+            'username': 'unassignednewteacher',
+            'first_name': 'New',
+            'last_name': 'Teacher',
+            'password': 'Teacher@12345',
+            'staff_id': '',
+            'qualification': 'BSc Education',
+            'specialization': 'Mathematics',
+            'employment_type': 'full_time',
+            'status': 'active',
+            'date_joined': timezone.localdate().isoformat(),
+            'office': '',
+            'bio': '',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('assigned_classes', response.context['form'].errors)
+        self.assertFalse(User.objects.filter(username='unassignednewteacher').exists())
 
     def test_parent_create_form_creates_linked_user(self):
         self.login('admin')

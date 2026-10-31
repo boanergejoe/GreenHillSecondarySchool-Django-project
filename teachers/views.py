@@ -23,6 +23,7 @@ class TeacherListView(BaseListView):
         ('Staff ID', 'staff_id'),
         ('Full Name', 'user.display_name'),
         ('Department', 'department.name'),
+        ('Classes', 'assigned_class_names'),
         ('Specialization', 'specialization'),
         ('Employment', 'get_employment_type_display'),
         ('Status', 'get_status_display'),
@@ -34,7 +35,9 @@ class TeacherListView(BaseListView):
     create_label = 'Add Teacher'
 
     def get_queryset(self):
-        qs = Teacher.objects.select_related('user', 'department')
+        qs = Teacher.objects.select_related(
+            'user', 'department'
+        ).prefetch_related('assigned_classes')
         q = self.request.GET.get('q', '').strip()
         dept = self.request.GET.get('department', '').strip()
         status = self.request.GET.get('status', '').strip()
@@ -121,6 +124,9 @@ class TeacherDetailView(DetailView):
             'page_title': f'Teacher - {self.object.full_name}',
             'subjects': self.object.user.teaching_subjects.prefetch_related(
                 'school_classes'
+            ),
+            'assigned_classes': self.object.assigned_classes.select_related(
+                'academic_year'
             ),
             'managed_classes': self.object.user.managed_classes.all(),
             'assignments': self.object.user.created_assignments.select_related(

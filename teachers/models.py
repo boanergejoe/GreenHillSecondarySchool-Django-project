@@ -26,6 +26,9 @@ class Teacher(models.Model):
         'academics.Department', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='teachers',
     )
+    assigned_classes = models.ManyToManyField(
+        'academics.SchoolClass', related_name='assigned_teachers', blank=True
+    )
     qualification = models.CharField(max_length=150, blank=True)
     specialization = models.CharField(max_length=150, blank=True)
     employment_type = models.CharField(
@@ -59,6 +62,11 @@ class Teacher(models.Model):
     @property
     def subject_count(self):
         return self.user.teaching_subjects.count()
+
+    @property
+    def assigned_class_names(self):
+        names = [school_class.name for school_class in self.assigned_classes.all()]
+        return ', '.join(names) if names else '-'
 
     def get_absolute_url(self):
         return reverse('teachers:teacher_detail', args=[self.pk])
