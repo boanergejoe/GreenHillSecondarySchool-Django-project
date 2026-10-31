@@ -44,12 +44,15 @@ class SchoolClassAdmin(admin.ModelAdmin):
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
     form = SubjectForm
-    list_display = ('code', 'name', 'school_class', 'teacher', 'academic_year', 'term', 'is_active')
-    list_filter = ('academic_year', 'term', 'school_class', 'is_active', 'departments')
+    list_display = (
+        'code', 'name', 'school_class_names', 'teacher', 'academic_year', 'term',
+        'is_active',
+    )
+    list_filter = ('academic_year', 'term', 'school_classes', 'is_active', 'departments')
     search_fields = ('name', 'code', 'teacher__username', 'departments__name')
-    autocomplete_fields = ('school_class', 'teacher', 'academic_year', 'term')
-    filter_horizontal = ('departments',)
-    list_select_related = ('school_class', 'teacher', 'academic_year', 'term')
+    autocomplete_fields = ('teacher', 'academic_year')
+    filter_horizontal = ('departments', 'school_classes')
+    list_select_related = ('teacher', 'academic_year')
 
 
 @admin.register(Enrollment)
@@ -57,5 +60,5 @@ class EnrollmentAdmin(admin.ModelAdmin):
     list_display = ('student', 'school_class', 'academic_year', 'term', 'is_active')
     list_filter = ('academic_year', 'term', 'school_class', 'is_active')
     search_fields = ('student__student_id', 'student__user__first_name', 'student__user__last_name')
-    autocomplete_fields = ('student', 'school_class', 'academic_year', 'term')
-    list_select_related = ('student__user', 'school_class', 'academic_year', 'term')
+    autocomplete_fields = ('student', 'school_class', 'academic_year')
+    list_select_related = ('student__user', 'school_class', 'academic_year')

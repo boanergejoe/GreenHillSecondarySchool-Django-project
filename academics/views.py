@@ -165,14 +165,14 @@ class SubjectListView(BaseListView):
     page_title = 'Subjects'
     allowed_roles = ('teacher', 'accountant')
     search_fields = [
-        'name', 'code', 'school_class__name', 'teacher__first_name',
+        'name', 'code', 'school_classes__name', 'teacher__first_name',
         'departments__name',
     ]
     columns = [
         ('Code', 'code'), ('Subject', 'name'),
-        ('Department(s)', 'department_names'), ('Class', 'school_class.name'),
+        ('Department(s)', 'department_names'), ('Class(es)', 'school_class_names'),
         ('Teacher', 'teacher.display_name'), ('Academic Year', 'academic_year.name'),
-        ('Term', 'term.name'), ('Active', 'is_active'),
+        ('Term', 'term'), ('Active', 'is_active'),
     ]
     create_url_name = 'academics:subject_create'
     edit_url_name = 'academics:subject_update'
@@ -181,8 +181,9 @@ class SubjectListView(BaseListView):
 
     def get_queryset(self):
         qs = Subject.objects.select_related(
-            'school_class', 'teacher', 'academic_year', 'term'
+            'teacher', 'academic_year'
         ).prefetch_related('departments')
+        qs = qs.prefetch_related('school_classes')
         if self.request.user.role == 'teacher':
             qs = qs.filter(teacher=self.request.user)
         return qs
@@ -219,7 +220,7 @@ class EnrollmentListView(BaseListView):
     columns = [
         ('Student', 'student.user.display_name'), ('Student ID', 'student.student_id'),
         ('Class', 'school_class.name'), ('Academic Year', 'academic_year.name'),
-        ('Term', 'term.name'), ('Enrolled On', 'enrolled_on'),
+        ('Term', 'term'), ('Enrolled On', 'enrolled_on'),
         ('Active', 'is_active'),
     ]
     create_url_name = 'academics:enrollment_create'

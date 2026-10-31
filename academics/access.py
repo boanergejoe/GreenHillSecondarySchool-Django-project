@@ -15,7 +15,7 @@ def teacher_class_ids(user):
 
 def teacher_subjects(user):
     return Subject.objects.filter(
-        Q(teacher=user) | Q(school_class__class_teacher=user)
+        Q(teacher=user) | Q(school_classes__class_teacher=user)
     ).distinct()
 
 
@@ -30,5 +30,5 @@ def teacher_can_manage_assignment(user, assignment):
     return (
         assignment.created_by_id == user.id
         or subject.teacher_id == user.id
-        or subject.school_class.class_teacher_id == user.id
+        or subject.school_classes.filter(class_teacher_id=user.id).exists()
     )

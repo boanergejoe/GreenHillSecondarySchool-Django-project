@@ -147,6 +147,9 @@ class StudentDetailView(DetailView):
             'payments': student.payments.select_related('fee')[:10],
             'submissions': student.submissions.select_related('assignment')[:10],
             'attendance_percentage': student.attendance_percentage,
+            'enrollments': student.enrollments.select_related(
+                'school_class', 'academic_year'
+            ).order_by('-enrolled_on'),
         })
         return context
 

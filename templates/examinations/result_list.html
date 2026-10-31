@@ -39,7 +39,7 @@
                 <tr>
                     <td>{{ result.examination.name }}</td>
                     <td><div class="avatar-stack"><span class="avatar avatar-initials">{{ result.student.user.initials }}</span><div><strong>{{ result.student.full_name }}</strong><small>{{ result.student.student_id }}</small></div></div></td>
-                    <td>{{ result.subject.school_class.name }}</td>
+                    <td>{{ result.student.school_class.name|default:"-" }}</td>
                     <td>{{ result.subject.name }}</td>
                     <td>{{ result.marks_obtained }} / {{ result.total_marks }}</td>
                     <td>{{ result.percentage }}%</td>

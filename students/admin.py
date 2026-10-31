@@ -1,6 +1,14 @@
 from django.contrib import admin
 
+from academics.models import Enrollment
+
 from .models import Parent, Student
+
+
+class EnrollmentInline(admin.TabularInline):
+    model = Enrollment
+    extra = 1
+    autocomplete_fields = ('school_class', 'academic_year')
 
 
 @admin.register(Student)
@@ -12,6 +20,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_select_related = ('user', 'school_class', 'parent')
     date_hierarchy = 'admission_date'
     list_per_page = 25
+    inlines = [EnrollmentInline]
 
 
 @admin.register(Parent)

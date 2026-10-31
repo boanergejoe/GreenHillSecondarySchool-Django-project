@@ -11,7 +11,7 @@ class SubmissionInline(admin.TabularInline):
 @admin.register(Assignment)
 class AssignmentAdmin(admin.ModelAdmin):
     list_display = ('title', 'subject', 'due_date', 'created_by', 'is_published')
-    list_filter = ('is_published', 'subject__school_class')
+    list_filter = ('is_published', 'subject__school_classes')
     search_fields = ('title', 'subject__name')
     autocomplete_fields = ('subject', 'created_by')
     list_select_related = ('subject', 'created_by')

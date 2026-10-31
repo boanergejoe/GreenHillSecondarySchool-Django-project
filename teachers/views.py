@@ -119,8 +119,8 @@ class TeacherDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         context.update({
             'page_title': f'Teacher - {self.object.full_name}',
-            'subjects': self.object.user.teaching_subjects.select_related(
-                'school_class'
+            'subjects': self.object.user.teaching_subjects.prefetch_related(
+                'school_classes'
             ),
             'managed_classes': self.object.user.managed_classes.all(),
             'assignments': self.object.user.created_assignments.select_related(

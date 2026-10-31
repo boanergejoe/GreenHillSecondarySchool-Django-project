@@ -31,19 +31,19 @@ class AssignmentListView(ListView):
     def get_queryset(self):
         user = self.request.user
         qs = Assignment.objects.select_related(
-            'subject', 'subject__school_class', 'created_by'
-        )
+            'subject', 'created_by'
+        ).prefetch_related('subject__school_classes')
         if user.role == 'teacher':
             qs = qs.filter(
                 Q(created_by=user)
                 | Q(subject__teacher=user)
-                | Q(subject__school_class__class_teacher=user)
+                | Q(subject__school_classes__class_teacher=user)
             ).distinct()
         elif user.role == 'student':
             student = getattr(user, 'student_profile', None)
             if student and student.school_class_id:
                 qs = qs.filter(
-                    subject__school_class_id=student.school_class_id, is_published=True
+                    subject__school_classes=student.school_class, is_published=True
                 )
             else:
                 qs = qs.none()
@@ -51,7 +51,9 @@ class AssignmentListView(ListView):
             child_classes = Student.objects.filter(
                 parent__user=user
             ).values_list('school_class_id', flat=True)
-            qs = qs.filter(subject__school_class_id__in=child_classes, is_published=True)
+            qs = qs.filter(
+                subject__school_classes__in=child_classes, is_published=True
+            )
         q = self.request.GET.get('q', '').strip()
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(subject__name__icontains=q))
@@ -125,8 +127,8 @@ class AssignmentDeleteView(BaseDeleteView):
 def assignment_detail(request, pk):
     assignment = get_object_or_404(
         Assignment.objects.select_related(
-            'subject__school_class', 'subject__teacher', 'created_by'
-        ),
+            'subject__teacher', 'created_by'
+        ).prefetch_related('subject__school_classes'),
         pk=pk,
     )
     user = request.user
@@ -143,13 +145,20 @@ def assignment_detail(request, pk):
         if not can_manage:
             raise PermissionDenied('You cannot view this assignment.')
     elif user.role == 'student':
-        if not student or assignment.subject.school_class_id != student.school_class_id:
+        if (
+            not student
+            or not assignment.subject.school_classes.filter(
+                pk=student.school_class_id
+            ).exists()
+        ):
             raise PermissionDenied('You cannot view this assignment.')
     elif user.role == 'parent':
         child_classes = Student.objects.filter(parent__user=user).values_list(
             'school_class_id', flat=True
         )
-        if assignment.subject.school_class_id not in child_classes:
+        if not assignment.subject.school_classes.filter(
+            pk__in=child_classes
+        ).exists():
             raise PermissionDenied('You cannot view this assignment.')
     elif not can_manage:
         raise PermissionDenied('You cannot view this assignment.')
@@ -171,9 +180,16 @@ def assignment_detail(request, pk):
 def submit_assignment(request, pk):
     if request.user.role != 'student':
         raise PermissionDenied('Only students can submit assignments.')
-    assignment = get_object_or_404(Assignment, pk=pk)
+    assignment = get_object_or_404(
+        Assignment.objects.prefetch_related('subject__school_classes'), pk=pk
+    )
     student = getattr(request.user, 'student_profile', None)
-    if not student or assignment.subject.school_class_id != student.school_class_id:
+    if (
+        not student
+        or not assignment.subject.school_classes.filter(
+            pk=student.school_class_id
+        ).exists()
+    ):
         raise PermissionDenied('This assignment is not available to you.')
 
     submission = Submission.objects.filter(assignment=assignment, student=student).first()
@@ -203,8 +219,8 @@ def submit_assignment(request, pk):
 def review_submission(request, pk):
     submission = get_object_or_404(
         Submission.objects.select_related(
-            'assignment__subject__school_class', 'student__user'
-        ),
+            'assignment__subject', 'student__user'
+        ).prefetch_related('assignment__subject__school_classes'),
         pk=pk,
     )
     user = request.user

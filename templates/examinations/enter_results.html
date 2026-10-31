@@ -31,7 +31,7 @@
     <input type="hidden" name="subject" value="{{ subject.pk }}">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6>{{ subject.name }} &middot; {{ subject.school_class.name }}</h6>
+            <h6>{{ subject.name }} &middot; {{ subject.school_class_names }}</h6>
             <span class="badge bg-primary-subtle text-primary">Total {{ exam.total_marks }}</span>
         </div>
         <div class="table-responsive">

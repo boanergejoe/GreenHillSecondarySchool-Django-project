@@ -162,8 +162,8 @@ class Subject(models.Model):
         Department, blank=True, related_name='subjects',
         help_text='Select both Arts and Science for subjects shared by both departments.',
     )
-    school_class = models.ForeignKey(
-        SchoolClass, on_delete=models.CASCADE, related_name='subjects'
+    school_classes = models.ManyToManyField(
+        SchoolClass, related_name='subjects'
     )
     teacher = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -173,9 +173,8 @@ class Subject(models.Model):
     academic_year = models.ForeignKey(
         AcademicYear, on_delete=models.CASCADE, related_name='subjects'
     )
-    term = models.ForeignKey(
-        Term, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='subjects',
+    term = models.CharField(
+        max_length=50, choices=Term.Name.choices, blank=True, default=''
     )
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -183,7 +182,6 @@ class Subject(models.Model):
 
     class Meta:
         ordering = ['name']
-        unique_together = ('code', 'school_class', 'academic_year')
 
     def __str__(self):
         return f'{self.code} - {self.name}'
@@ -194,23 +192,13 @@ class Subject(models.Model):
         return ', '.join(names) if names else '-'
 
     @property
+    def school_class_names(self):
+        names = [school_class.name for school_class in self.school_classes.all()]
+        return ', '.join(names) if names else '-'
+
+    @property
     def is_dual_department(self):
         return self.departments.count() > 1
-
-    def clean(self):
-        errors = {}
-        if (
-            self.academic_year_id and self.school_class_id
-            and self.school_class.academic_year_id != self.academic_year_id
-        ):
-            errors['school_class'] = 'The class must belong to the selected academic year.'
-        if (
-            self.term_id and self.academic_year_id
-            and self.term.academic_year_id != self.academic_year_id
-        ):
-            errors['term'] = 'The term must belong to the selected academic year.'
-        if errors:
-            raise ValidationError(errors)
 
     def get_absolute_url(self):
         return reverse('academics:subject_list')
@@ -226,9 +214,8 @@ class Enrollment(models.Model):
     academic_year = models.ForeignKey(
         AcademicYear, on_delete=models.CASCADE, related_name='enrollments'
     )
-    term = models.ForeignKey(
-        Term, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='enrollments',
+    term = models.CharField(
+        max_length=50, choices=Term.Name.choices, blank=True, default=''
     )
     enrolled_on = models.DateField(default=timezone.localdate)
     is_active = models.BooleanField(default=True)
@@ -247,11 +234,6 @@ class Enrollment(models.Model):
             and self.school_class.academic_year_id != self.academic_year_id
         ):
             errors['school_class'] = 'The class must belong to the selected academic year.'
-        if (
-            self.term_id and self.academic_year_id
-            and self.term.academic_year_id != self.academic_year_id
-        ):
-            errors['term'] = 'The term must belong to the selected academic year.'
         if errors:
             raise ValidationError(errors)
 

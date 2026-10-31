@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
+from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
@@ -10,12 +11,16 @@ from django.urls import reverse
 from django.utils import timezone
 
 from academics.access import teacher_classes
-from academics.models import AcademicYear, Department, SchoolClass, Subject, Term
+from academics.forms import SubjectForm
+from academics.models import (
+    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
+)
 from accounts.models import User
 from assignments.models import Assignment
 from examinations.models import Examination
 from finance.models import Fee, Payment
 from finance.services import active_fees_for_student
+from students.forms import StudentForm
 from students.models import Parent, Student
 from teachers.models import Teacher
 
@@ -123,7 +128,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         student = user.student_profile
         exam = Examination.objects.filter(school_class=student.school_class).first()
         assignment = Assignment.objects.filter(
-            subject__school_class=student.school_class
+            subject__school_classes=student.school_class
         ).first()
         urls = [
             reverse('students:student_detail', args=[student.pk]),
@@ -155,7 +160,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         student = parent.children.select_related('school_class').first()
         exam = Examination.objects.filter(school_class=student.school_class).first()
         assignment = Assignment.objects.filter(
-            subject__school_class=student.school_class
+            subject__school_classes=student.school_class
         ).first()
         urls = [
             reverse('students:student_detail', args=[student.pk]),
@@ -181,6 +186,9 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.login('admin')
         school_class = SchoolClass.objects.first()
         parent = Parent.objects.first()
+        terms = list(Term.objects.filter(
+            academic_year=school_class.academic_year
+        ).order_by('name')[:2])
         response = self.client.post(reverse('students:student_create'), {
             'username': 'newstudent',
             'first_name': 'Amina',
@@ -190,6 +198,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             'password': 'Student@12345',
             'student_id': '',
             'school_class': school_class.pk,
+            'term': [term.name for term in terms],
             'parent': parent.pk,
             'admission_date': timezone.localdate().isoformat(),
             'date_of_birth': '2008-01-01',
@@ -206,6 +215,16 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(user.role, User.Role.STUDENT)
         self.assertTrue(user.check_password('Student@12345'))
         self.assertEqual(user.student_profile.school_class, school_class)
+        enrollments = Enrollment.objects.filter(student=user.student_profile)
+        self.assertEqual(enrollments.count(), len(terms))
+        self.assertSetEqual(
+            set(enrollments.values_list('term', flat=True)),
+            {term.name for term in terms},
+        )
+        self.assertEqual(
+            set(enrollments.values_list('academic_year_id', flat=True)),
+            {school_class.academic_year_id},
+        )
 
     def test_teacher_create_form_creates_linked_user(self):
         self.login('admin')
@@ -276,12 +295,15 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         required_fields = (
             'username', 'first_name', 'last_name', 'email', 'phone', 'password',
             'school_class', 'parent', 'admission_date', 'date_of_birth', 'gender',
-            'status', 'address', 'guardian_name', 'guardian_phone', 'blood_group',
+            'term', 'status', 'address', 'guardian_name', 'guardian_phone', 'blood_group',
             'medical_notes',
         )
         for name in required_fields:
             self.assertTrue(form.fields[name].required, name)
-            self.assertIn('required', form.fields[name].widget.attrs, name)
+            if not isinstance(
+                form.fields[name].widget, forms.CheckboxSelectMultiple
+            ):
+                self.assertIn('required', form.fields[name].widget.attrs, name)
         self.assertFalse(form.fields['student_id'].required)
 
         response = self.client.get(reverse('accounts:user_create'))
@@ -309,7 +331,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         ):
             for code in ('MATH', 'ENG', 'ICT'):
                 subject = Subject.objects.get(
-                    code=code, school_class=school_class
+                    code=code, school_classes=school_class
                 )
                 self.assertEqual(
                     set(subject.departments.values_list('code', flat=True)),
@@ -329,6 +351,54 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             set(geography.departments.values_list('code', flat=True)), {'ART'}
         )
         self.assertFalse(biology.is_dual_department)
+
+    def test_subject_form_allows_multiple_classes_like_departments(self):
+        year = AcademicYear.objects.get(name='2026')
+        arts_class = SchoolClass.objects.get(name='Senior 3 Arts', academic_year=year)
+        science_class = SchoolClass.objects.get(
+            name='Senior 3 Science', academic_year=year
+        )
+        departments = list(Department.objects.filter(code__in=['ART', 'SCI']))
+        teacher = User.objects.get(username='teacher1')
+        term = Term.objects.filter(academic_year=year).first()
+        form = SubjectForm(data={
+            'name': 'Core Skills',
+            'code': 'COREX',
+            'departments': [department.pk for department in departments],
+            'school_classes': [arts_class.pk, science_class.pk],
+            'teacher': teacher.pk,
+            'academic_year': year.pk,
+            'term': term.name,
+            'is_active': 'on',
+            'description': '',
+        })
+
+        self.assertEqual(
+            type(form.fields['school_classes'].widget),
+            type(form.fields['departments'].widget),
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        subject = form.save()
+        self.assertSetEqual(
+            set(subject.school_classes.all()), {arts_class, science_class}
+        )
+
+    def test_subject_and_student_forms_use_fixed_term_choices(self):
+        expected = list(Term.Name.choices)
+        subject_form = SubjectForm()
+        student_form = StudentForm()
+        self.assertEqual(
+            [
+                choice for choice in subject_form.fields['term'].choices
+                if choice[0]
+            ],
+            expected,
+        )
+        self.assertEqual(list(student_form.fields['term'].choices), expected)
+        self.assertEqual(
+            type(student_form.fields['term'].widget),
+            type(subject_form.fields['school_classes'].widget),
+        )
 
     def test_seed_creates_three_terms_within_the_academic_year(self):
         year = AcademicYear.objects.get(name='2026')
@@ -379,12 +449,12 @@ class GreenHillSecondaryIntegrationTests(TestCase):
 
         arts_codes = set(
             Subject.objects.filter(
-                school_class__name='Senior 3 Arts'
+                school_classes__name='Senior 3 Arts'
             ).values_list('code', flat=True)
         )
         science_codes = set(
             Subject.objects.filter(
-                school_class__name='Senior 3 Science'
+                school_classes__name='Senior 3 Science'
             ).values_list('code', flat=True)
         )
         shared_codes = {'MATH', 'ENG', 'ICT'}

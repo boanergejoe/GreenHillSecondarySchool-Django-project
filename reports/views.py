@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.db.models import Avg, Count, Max, Q, Sum
+from django.db.models import Avg, Count, F, Max, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -197,7 +197,10 @@ def export_results(request, fmt):
     if request.user.role == 'teacher':
         results = results.filter(
             Q(subject__teacher=request.user)
-            | Q(subject__school_class__class_teacher=request.user)
+            | Q(
+                student__school_class__class_teacher=request.user,
+                subject__school_classes=F('student__school_class'),
+            )
         ).distinct()
     elif request.user.role == 'student':
         results = results.filter(student__user=request.user)
@@ -208,7 +211,7 @@ def export_results(request, fmt):
     if exam_id:
         results = results.filter(examination_id=exam_id)
     if class_id:
-        results = results.filter(subject__school_class_id=class_id)
+        results = results.filter(student__school_class_id=class_id)
 
     headers = ['Exam', 'Student ID', 'Student', 'Class', 'Subject', 'Marks', 'Total', 'Percentage', 'Grade']
     rows = [
@@ -252,24 +255,27 @@ def export_finance(request, fmt):
 
 @role_required('teacher', 'accountant')
 def class_performance(request):
-    results = Result.objects.select_related('subject__school_class')
+    results = Result.objects.select_related('student__school_class')
     class_id = request.GET.get('school_class', '')
     if class_id:
-        results = results.filter(subject__school_class_id=class_id)
+        results = results.filter(student__school_class_id=class_id)
     if request.user.role == 'teacher':
         results = results.filter(
             Q(subject__teacher=request.user)
-            | Q(subject__school_class__class_teacher=request.user)
+            | Q(
+                student__school_class__class_teacher=request.user,
+                subject__school_classes=F('student__school_class'),
+            )
         ).distinct()
 
     summary = (
-        results.values('subject__school_class__name', 'subject__school_class_id')
+        results.values('student__school_class__name', 'student__school_class_id')
         .annotate(
             entries=Count('id'),
             average=Avg('marks_obtained'),
             highest=Max('marks_obtained'),
         )
-        .order_by('subject__school_class__name')
+        .order_by('student__school_class__name')
     )
     classes = SchoolClass.objects.all().order_by('name')
     if request.user.role == 'teacher':

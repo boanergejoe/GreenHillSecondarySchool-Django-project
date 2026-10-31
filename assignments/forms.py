@@ -21,7 +21,9 @@ class AssignmentForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        qs = Subject.objects.select_related('school_class', 'academic_year')
+        qs = Subject.objects.select_related(
+            'academic_year'
+        ).prefetch_related('school_classes')
         if self.user and self.user.role == 'teacher':
             qs = qs.filter(teacher=self.user)
         self.fields['subject'].queryset = qs.order_by('name')

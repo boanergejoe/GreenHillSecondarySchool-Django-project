@@ -31,7 +31,7 @@
                 <tr>
                     <td class="fw-semibold">{{ subject.name }}</td>
                     <td>{{ subject.code }}</td>
-                    <td>{{ subject.school_class.name }}</td>
+                    <td>{{ subject.school_class_names }}</td>
                     <td>{{ subject.teacher.display_name|default:"-" }}</td>
                     <td><span class="badge bg-light text-dark">{{ subject.result_count }}</span></td>
                     <td class="text-end">

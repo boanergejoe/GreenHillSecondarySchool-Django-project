@@ -48,5 +48,5 @@ class ResultFilterForm(BootstrapFormMixin, forms.Form):
         queryset=SchoolClass.objects.all(), required=False
     )
     subject = forms.ModelChoiceField(
-        queryset=Subject.objects.select_related('school_class'), required=False
+        queryset=Subject.objects.prefetch_related('school_classes'), required=False
     )

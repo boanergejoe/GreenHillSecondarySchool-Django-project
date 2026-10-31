@@ -87,7 +87,7 @@ def take_attendance(request):
         students = Student.objects.filter(
             school_class=school_class, status=Student.Status.ACTIVE
         ).select_related('user').order_by('user__first_name', 'user__last_name')
-        subjects = Subject.objects.filter(school_class=school_class)
+        subjects = Subject.objects.filter(school_classes=school_class)
         if user.role == 'teacher':
             subjects = subjects.filter(teacher=user)
 
@@ -95,7 +95,7 @@ def take_attendance(request):
         subject = None
         if selected_subject and selected_subject.isdigit():
             subject_scope = Subject.objects.filter(
-                pk=selected_subject, school_class=school_class
+                pk=selected_subject, school_classes=school_class
             )
             if user.role == 'teacher':
                 subject_scope = subject_scope.filter(teacher=user)

@@ -25,7 +25,7 @@
             <tbody>
             {% for row in summary %}
                 <tr>
-                    <td class="fw-semibold">{{ row.subject__school_class__name|default:"Unassigned" }}</td>
+                    <td class="fw-semibold">{{ row.student__school_class__name|default:"Unassigned" }}</td>
                     <td>{{ row.entries }}</td>
                     <td>{{ row.average|floatformat:1 }}</td>
                     <td>{{ row.highest|floatformat:1 }}</td>

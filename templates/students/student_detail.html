@@ -65,6 +65,7 @@
                 <div class="detail-list">
                     <div class="item"><span>Full Name</span><strong>{{ student.full_name }}</strong></div>
                     <div class="item"><span>Student ID</span><strong>{{ student.student_id }}</strong></div>
+                    <div class="item"><span>Registered Term(s)</span><strong>{% for enrollment in enrollments %}{{ enrollment.get_term_display }} ({{ enrollment.academic_year.name }}){% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}</strong></div>
                     <div class="item"><span>Date of Birth</span><strong>{{ student.date_of_birth|date:"d M Y"|default:"-" }}</strong></div>
                     <div class="item"><span>Blood Group</span><strong>{{ student.blood_group|default:"-" }}</strong></div>
                     <div class="item"><span>Email</span><strong>{{ student.user.email|default:"-" }}</strong></div>

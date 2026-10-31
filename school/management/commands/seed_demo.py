@@ -6,7 +6,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from academics.models import AcademicYear, Department, SchoolClass, Subject, Term
+from academics.models import (
+    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
+)
 from accounts.models import User
 from assignments.models import Assignment, Submission
 from attendance.models import Attendance
@@ -254,17 +256,27 @@ class Command(BaseCommand):
             subjects = []
             for code in subject_codes:
                 data = subject_data[code]
-                subject, _ = Subject.objects.update_or_create(
+                subject = Subject.objects.filter(
                     code=code,
-                    school_class=school_class,
                     academic_year=year,
-                    defaults={
-                        'name': data['name'],
-                        'teacher': data['teacher'].user,
-                        'term': current_term,
-                        'is_active': True,
-                    },
-                )
+                    school_classes=school_class,
+                ).first()
+                if subject:
+                    subject.name = data['name']
+                    subject.teacher = data['teacher'].user
+                    subject.term = current_term.name
+                    subject.is_active = True
+                    subject.save()
+                else:
+                    subject = Subject.objects.create(
+                        code=code,
+                        name=data['name'],
+                        teacher=data['teacher'].user,
+                        academic_year=year,
+                        term=current_term.name,
+                        is_active=True,
+                    )
+                subject.school_classes.add(school_class)
                 subject.departments.set(data['departments'])
                 subjects.append(subject)
             for stale_subject in school_class.subjects.exclude(code__in=subject_codes):
@@ -329,6 +341,16 @@ class Command(BaseCommand):
                     'guardian_name': parent.user.display_name,
                     'guardian_phone': parent.user.phone or '+211 900 000 000',
                     'blood_group': 'O+',
+                },
+            )
+            Enrollment.objects.update_or_create(
+                student=student,
+                school_class=school_class,
+                academic_year=year,
+                term=current_term.name,
+                defaults={
+                    'enrolled_on': student.admission_date,
+                    'is_active': student.status == Student.Status.ACTIVE,
                 },
             )
             students.append(student)

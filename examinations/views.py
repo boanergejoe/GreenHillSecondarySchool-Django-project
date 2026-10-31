@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -98,15 +98,20 @@ def exam_detail(request, pk):
     ):
         raise PermissionDenied('You cannot view this examination.')
 
-    subjects = Subject.objects.filter(academic_year=exam.academic_year)
+    subjects = Subject.objects.filter(
+        academic_year=exam.academic_year
+    ).prefetch_related('school_classes')
     if exam.school_class_id:
-        subjects = subjects.filter(school_class=exam.school_class)
+        subjects = subjects.filter(school_classes=exam.school_class)
     if request.user.role == 'teacher':
         subjects = subjects.filter(
-            Q(teacher=request.user) | Q(school_class__class_teacher=request.user)
+            Q(teacher=request.user)
+            | Q(school_classes__in=teacher_classes(request.user))
         ).distinct()
     subject_rows = subjects.annotate(result_count=Count('results')).select_related(
-        'school_class', 'teacher'
+        'teacher'
+    ).prefetch_related(
+        'school_classes'
     )
     results_qs = exam.results.select_related('student__user', 'subject')
     if request.user.role == 'teacher':
@@ -124,12 +129,15 @@ def exam_detail(request, pk):
 @role_required('teacher')
 def enter_results(request, pk):
     exam = get_object_or_404(Examination, pk=pk)
-    subjects = Subject.objects.filter(academic_year=exam.academic_year)
+    subjects = Subject.objects.filter(
+        academic_year=exam.academic_year
+    ).prefetch_related('school_classes')
     if exam.school_class_id:
-        subjects = subjects.filter(school_class=exam.school_class)
+        subjects = subjects.filter(school_classes=exam.school_class)
     if request.user.role == 'teacher':
         subjects = subjects.filter(
-            Q(teacher=request.user) | Q(school_class__class_teacher=request.user)
+            Q(teacher=request.user)
+            | Q(school_classes__in=teacher_classes(request.user))
         ).distinct()
 
     subject_id = request.GET.get('subject') or request.POST.get('subject')
@@ -138,8 +146,11 @@ def enter_results(request, pk):
     if subject_id:
         subject = get_object_or_404(subjects, pk=subject_id)
         students = Student.objects.filter(
-            school_class=subject.school_class, status=Student.Status.ACTIVE
+            school_class__in=subject.school_classes.all(),
+            status=Student.Status.ACTIVE,
         ).select_related('user').order_by('user__first_name', 'user__last_name')
+        if exam.school_class_id:
+            students = students.filter(school_class_id=exam.school_class_id)
 
     if request.method == 'POST' and subject:
         saved = 0
@@ -193,15 +204,19 @@ def enter_results(request, pk):
 def result_list(request):
     user = request.user
     qs = Result.objects.select_related(
-        'student__user', 'examination', 'subject', 'subject__school_class'
-    )
+        'student__user', 'student__school_class', 'examination', 'subject'
+    ).prefetch_related('subject__school_classes')
     if user.role == 'student':
         qs = qs.filter(student__user=user)
     elif user.role == 'parent':
         qs = qs.filter(student__parent__user=user)
     elif user.role == 'teacher':
         qs = qs.filter(
-            Q(subject__teacher=user) | Q(subject__school_class__class_teacher=user)
+            Q(subject__teacher=user)
+            | Q(
+                student__school_class__class_teacher=user,
+                subject__school_classes=F('student__school_class'),
+            )
         ).distinct()
 
     exam_id = request.GET.get('examination', '').strip()
@@ -211,7 +226,7 @@ def result_list(request):
     if exam_id:
         qs = qs.filter(examination_id=exam_id)
     if class_id:
-        qs = qs.filter(subject__school_class_id=class_id)
+        qs = qs.filter(subject__school_classes__id=class_id)
     if subject_id:
         qs = qs.filter(subject_id=subject_id)
     if q:
@@ -223,10 +238,12 @@ def result_list(request):
 
     examinations = Examination.objects.select_related('academic_year').all()
     classes = SchoolClass.objects.all()
-    subjects = Subject.objects.select_related('school_class').all()
+    subjects = Subject.objects.prefetch_related('school_classes').all()
     if user.role == 'teacher':
         classes = teacher_classes(user).order_by('name')
-        subjects = teacher_subjects(user).select_related('school_class').order_by('name')
+        subjects = teacher_subjects(user).prefetch_related(
+            'school_classes'
+        ).order_by('name')
         examinations = Examination.objects.filter(
             Q(school_class__in=classes) | Q(school_class__isnull=True)
         ).select_related('academic_year').distinct()

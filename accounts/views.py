@@ -159,7 +159,7 @@ def _teacher_dashboard_context(user):
     if not teacher:
         return {'profile_missing': 'No teacher profile is linked to your account.'}
 
-    subjects = Subject.objects.filter(teacher=user).select_related('school_class')
+    subjects = Subject.objects.filter(teacher=user).prefetch_related('school_classes')
     classes = teacher_classes(user)
     students = Student.objects.filter(
         school_class__in=classes, status=Student.Status.ACTIVE
@@ -175,7 +175,7 @@ def _teacher_dashboard_context(user):
     assignments = Assignment.objects.filter(
         Q(created_by=user)
         | Q(subject__teacher=user)
-        | Q(subject__school_class__class_teacher=user)
+        | Q(subject__school_classes__class_teacher=user)
     ).distinct().order_by('-created_at')[:5]
     announcements = Announcement.objects.filter(
         audience__in=[Announcement.Audience.ALL, Announcement.Audience.TEACHERS],
@@ -230,8 +230,8 @@ def _student_dashboard_context(user):
     ).select_related('academic_year', 'term').distinct().order_by('-start_date')
 
     subjects = Subject.objects.filter(
-        school_class=student.school_class
-    ).select_related('teacher__user')
+        school_classes=student.school_class
+    ).select_related('teacher__user').prefetch_related('school_classes')
     assignments = Assignment.objects.filter(
         subject__in=subjects
     ).select_related('subject').order_by('due_date')[:6]

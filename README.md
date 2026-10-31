@@ -7,8 +7,8 @@ A Django-based college and high school management system for **Green Hill Second
 - Role-based authentication and dashboards for administrators, teachers, students, parents, and accountants.
 - Student registration, parent/guardian records, automatic student IDs, student promotion, and profile pages.
 - Teacher records, departments, staff accounts, and role assignment.
-- Academic years with exactly three terms, streamed Senior 3/4 classes, subjects, and enrollments.
-- Department-aware subject allocation for Arts and Science streams.
+- Academic years with three fixed term names, streamed Senior 3/4 classes, subjects, and student enrollments across selected terms.
+- Subjects can be assigned to multiple school classes and departments.
 - Class-specific fee structures, including differentiated Senior 3/4 tuition pricing.
 - Attendance capture, filtering, summaries, and reporting.
 - Examinations, result entry, result lists, report cards, and PDF report cards.
@@ -83,6 +83,8 @@ Then run:
 python manage.py migrate
 python manage.py seed_demo
 ```
+
+Term 1, Term 2, and Term 3 are fixed choices in the application code. Academic years, term dates, classes, subjects, student enrollments, and all other records are stored in the database, not in the deployed source files. For hosting, use a persistent production database and keep its connection settings stable; an ephemeral SQLite file may be replaced when the host rebuilds or restarts the application. Do not run `seed_demo` in production unless demo records are wanted.
 
 ## Environment Variables
 
