@@ -53,9 +53,6 @@
                 <a class="nav-link {% if '/classes/' in request.path %}active{% endif %}" href="{% url 'academics:class_list' %}">
                     <i class="bi bi-door-open"></i><span>Classes</span>
                 </a>
-                <a class="nav-link {% if '/courses/' in request.path %}active{% endif %}" href="{% url 'academics:course_list' %}">
-                    <i class="bi bi-journal-bookmark"></i><span>Courses</span>
-                </a>
                 <a class="nav-link {% if '/subjects/' in request.path %}active{% endif %}" href="{% url 'academics:subject_list' %}">
                     <i class="bi bi-book"></i><span>Subjects</span>
                 </a>

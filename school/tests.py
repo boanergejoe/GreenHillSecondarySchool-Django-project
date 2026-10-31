@@ -55,7 +55,6 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             reverse('academics:year_list'),
             reverse('academics:term_list'),
             reverse('academics:class_list'),
-            reverse('academics:course_list'),
             reverse('academics:subject_list'),
             reverse('academics:enrollment_list'),
             reverse('attendance:take'),
@@ -304,24 +303,31 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             self.assertIn(name, response.context['form'].errors)
         self.assertFalse(User.objects.filter(username='incomplete').exists())
 
-    def test_subjects_can_belong_to_both_departments(self):
+    def test_core_subjects_are_shared_by_arts_and_science(self):
+        for school_class in SchoolClass.objects.filter(
+            stream__in=[SchoolClass.Stream.ARTS, SchoolClass.Stream.SCIENCE]
+        ):
+            for code in ('MATH', 'ENG', 'ICT'):
+                subject = Subject.objects.get(
+                    code=code, school_class=school_class
+                )
+                self.assertEqual(
+                    set(subject.departments.values_list('code', flat=True)),
+                    {'ART', 'SCI'},
+                    f'{code} in {school_class.name}',
+                )
+                self.assertTrue(subject.is_dual_department)
+
         mathematics = Subject.objects.filter(code='MATH').first()
         biology = Subject.objects.filter(code='BIO').first()
         geography = Subject.objects.filter(code='GEO').first()
-        self.assertEqual(
-            set(mathematics.departments.values_list('code', flat=True)),
-            {'ART', 'SCI'},
-        )
+        self.assertEqual(mathematics.department_names, 'Arts, Science')
         self.assertEqual(
             set(biology.departments.values_list('code', flat=True)), {'SCI'}
         )
         self.assertEqual(
             set(geography.departments.values_list('code', flat=True)), {'ART'}
         )
-        self.assertEqual(
-            mathematics.department_names, 'Arts, Science'
-        )
-        self.assertTrue(mathematics.is_dual_department)
         self.assertFalse(biology.is_dual_department)
 
     def test_seed_creates_three_terms_within_the_academic_year(self):

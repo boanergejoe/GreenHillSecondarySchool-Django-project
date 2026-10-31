@@ -120,7 +120,7 @@ class TeacherDetailView(DetailView):
         context.update({
             'page_title': f'Teacher - {self.object.full_name}',
             'subjects': self.object.user.teaching_subjects.select_related(
-                'school_class', 'course'
+                'school_class'
             ),
             'managed_classes': self.object.user.managed_classes.all(),
             'assignments': self.object.user.created_assignments.select_related(

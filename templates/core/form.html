@@ -23,7 +23,12 @@
             <div class="form-grid">
                 {% for field in form %}
                     <div class="{% if field.field.widget.input_type == 'textarea' or field.name in 'address,description,message,bio,remarks,medical_notes,feedback,comment' %}full{% endif %}">
-                        {% if field.field.widget.input_type == 'checkbox' %}
+                        {% if field.field.widget.allow_multiple_selected %}
+                            <label class="form-label" for="{{ field.id_for_label }}">
+                                {{ field.label }}{% if field.field.required %}<span class="required-star">*</span>{% endif %}
+                            </label>
+                            <div class="checkbox-options">{{ field }}</div>
+                        {% elif field.field.widget.input_type == 'checkbox' %}
                             <div class="form-check mt-2">
                                 {{ field }}
                                 <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>

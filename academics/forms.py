@@ -4,7 +4,7 @@ from accounts.forms import BootstrapFormMixin
 from accounts.models import User
 
 from .models import (
-    AcademicYear, Course, Department, Enrollment, SchoolClass, Subject, Term,
+    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
 )
 
 
@@ -61,26 +61,40 @@ class SchoolClassForm(BootstrapFormMixin, forms.ModelForm):
         ).order_by('first_name', 'last_name')
 
 
-class CourseForm(BootstrapFormMixin, forms.ModelForm):
-    class Meta:
-        model = Course
-        fields = [
-            'name', 'code', 'department', 'credit_units', 'is_active', 'description',
-        ]
-        widgets = {'description': forms.Textarea(attrs={'rows': 3})}
-
-
 class SubjectForm(BootstrapFormMixin, forms.ModelForm):
+    shared_codes = {'MATH', 'MAT', 'ENG', 'ENGLISH', 'ICT'}
+    shared_names = {
+        'mathematics', 'math', 'english', 'english language', 'ict',
+        'information and communication technology',
+    }
+
     class Meta:
         model = Subject
         fields = [
-            'name', 'code', 'course', 'departments', 'school_class', 'teacher',
+            'name', 'code', 'departments', 'school_class', 'teacher',
             'academic_year', 'term', 'is_active', 'description',
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),
-            'departments': forms.SelectMultiple(attrs={'size': 5}),
+            'departments': forms.CheckboxSelectMultiple(),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        code = (cleaned_data.get('code') or '').strip().upper()
+        name = (cleaned_data.get('name') or '').strip().lower()
+        departments = cleaned_data.get('departments')
+        if code in self.shared_codes or name in self.shared_names:
+            department_codes = {
+                department.code.upper() for department in departments or []
+            }
+            if department_codes != {'ART', 'SCI'}:
+                self.add_error(
+                    'departments',
+                    'Mathematics, English, and ICT must be assigned to both '
+                    'Arts and Science.',
+                )
+        return cleaned_data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

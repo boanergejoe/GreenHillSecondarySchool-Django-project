@@ -1,7 +1,8 @@
 from django.contrib import admin
 
+from .forms import SubjectForm
 from .models import (
-    AcademicYear, Course, Department, Enrollment, SchoolClass, Subject, Term,
+    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
 )
 
 
@@ -40,24 +41,15 @@ class SchoolClassAdmin(admin.ModelAdmin):
     ordering = ('academic_year', 'level', 'name')
 
 
-@admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'department', 'credit_units', 'is_active')
-    list_filter = ('department', 'is_active')
-    search_fields = ('name', 'code')
-    autocomplete_fields = ('department',)
-    list_select_related = ('department',)
-    ordering = ('code',)
-
-
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
+    form = SubjectForm
     list_display = ('code', 'name', 'school_class', 'teacher', 'academic_year', 'term', 'is_active')
-    list_filter = ('academic_year', 'term', 'school_class', 'is_active')
-    search_fields = ('name', 'code', 'teacher__username')
-    autocomplete_fields = ('course', 'school_class', 'teacher', 'academic_year', 'term')
+    list_filter = ('academic_year', 'term', 'school_class', 'is_active', 'departments')
+    search_fields = ('name', 'code', 'teacher__username', 'departments__name')
+    autocomplete_fields = ('school_class', 'teacher', 'academic_year', 'term')
     filter_horizontal = ('departments',)
-    list_select_related = ('course', 'school_class', 'teacher', 'academic_year', 'term')
+    list_select_related = ('school_class', 'teacher', 'academic_year', 'term')
 
 
 @admin.register(Enrollment)

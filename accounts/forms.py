@@ -11,6 +11,8 @@ class BootstrapFormMixin:
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             widget = field.widget
+            if isinstance(widget, (forms.CheckboxSelectMultiple, forms.RadioSelect)):
+                continue
             if isinstance(widget, forms.CheckboxInput):
                 widget.attrs.setdefault('class', 'form-check-input')
             elif isinstance(widget, forms.Select):

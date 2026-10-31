@@ -3,11 +3,11 @@ from django.urls import reverse_lazy
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
 
 from .forms import (
-    AcademicYearForm, CourseForm, DepartmentForm, EnrollmentForm, SchoolClassForm,
+    AcademicYearForm, DepartmentForm, EnrollmentForm, SchoolClassForm,
     SubjectForm, TermForm,
 )
 from .models import (
-    AcademicYear, Course, Department, Enrollment, SchoolClass, Subject, Term,
+    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
 )
 
 
@@ -160,44 +160,6 @@ class SchoolClassDeleteView(BaseDeleteView):
     cancel_url_name = 'academics:class_list'
 
 
-class CourseListView(BaseListView):
-    model = Course
-    page_title = 'Courses'
-    allowed_roles = ('teacher', 'accountant')
-    search_fields = ['name', 'code', 'department__name']
-    columns = [
-        ('Code', 'code'), ('Course', 'name'), ('Department', 'department.name'),
-        ('Credit Units', 'credit_units'), ('Active', 'is_active'),
-    ]
-    create_url_name = 'academics:course_create'
-    edit_url_name = 'academics:course_update'
-    delete_url_name = 'academics:course_delete'
-    create_label = 'Add Course'
-
-
-class CourseCreateView(BaseCreateView):
-    model = Course
-    form_class = CourseForm
-    page_title = 'Add Course'
-    success_url = reverse_lazy('academics:course_list')
-    cancel_url_name = 'academics:course_list'
-
-
-class CourseUpdateView(BaseUpdateView):
-    model = Course
-    form_class = CourseForm
-    page_title = 'Edit Course'
-    success_url = reverse_lazy('academics:course_list')
-    cancel_url_name = 'academics:course_list'
-
-
-class CourseDeleteView(BaseDeleteView):
-    model = Course
-    page_title = 'Delete Course'
-    success_url = reverse_lazy('academics:course_list')
-    cancel_url_name = 'academics:course_list'
-
-
 class SubjectListView(BaseListView):
     model = Subject
     page_title = 'Subjects'
@@ -219,7 +181,7 @@ class SubjectListView(BaseListView):
 
     def get_queryset(self):
         qs = Subject.objects.select_related(
-            'school_class', 'teacher', 'academic_year', 'term', 'course__department'
+            'school_class', 'teacher', 'academic_year', 'term'
         ).prefetch_related('departments')
         if self.request.user.role == 'teacher':
             qs = qs.filter(teacher=self.request.user)

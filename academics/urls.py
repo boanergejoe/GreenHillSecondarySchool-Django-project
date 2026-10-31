@@ -25,11 +25,6 @@ urlpatterns = [
     path('classes/<int:pk>/edit/', views.SchoolClassUpdateView.as_view(), name='class_update'),
     path('classes/<int:pk>/delete/', views.SchoolClassDeleteView.as_view(), name='class_delete'),
 
-    path('courses/', views.CourseListView.as_view(), name='course_list'),
-    path('courses/add/', views.CourseCreateView.as_view(), name='course_create'),
-    path('courses/<int:pk>/edit/', views.CourseUpdateView.as_view(), name='course_update'),
-    path('courses/<int:pk>/delete/', views.CourseDeleteView.as_view(), name='course_delete'),
-
     path('subjects/', views.SubjectListView.as_view(), name='subject_list'),
     path('subjects/add/', views.SubjectCreateView.as_view(), name='subject_create'),
     path('subjects/<int:pk>/edit/', views.SubjectUpdateView.as_view(), name='subject_update'),

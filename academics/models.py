@@ -155,35 +155,9 @@ class SchoolClass(models.Model):
         return reverse('academics:class_list')
 
 
-class Course(models.Model):
-    name = models.CharField(max_length=150)
-    code = models.CharField(max_length=20, unique=True)
-    department = models.ForeignKey(
-        Department, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='courses',
-    )
-    description = models.TextField(blank=True)
-    credit_units = models.PositiveSmallIntegerField(default=3)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['name']
-
-    def __str__(self):
-        return f'{self.code} - {self.name}'
-
-    def get_absolute_url(self):
-        return reverse('academics:course_list')
-
-
 class Subject(models.Model):
     name = models.CharField(max_length=150)
     code = models.CharField(max_length=20)
-    course = models.ForeignKey(
-        Course, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='subjects',
-    )
     departments = models.ManyToManyField(
         Department, blank=True, related_name='subjects',
         help_text='Select both Arts and Science for subjects shared by both departments.',
@@ -217,11 +191,7 @@ class Subject(models.Model):
     @property
     def department_names(self):
         names = [department.name for department in self.departments.all()]
-        if names:
-            return ', '.join(names)
-        if self.course_id and self.course.department_id:
-            return self.course.department.name
-        return '-'
+        return ', '.join(names) if names else '-'
 
     @property
     def is_dual_department(self):

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from academics.models import AcademicYear, Course, Department, SchoolClass, Subject, Term
+from academics.models import AcademicYear, Department, SchoolClass, Subject, Term
 from accounts.models import User
 from assignments.models import Assignment, Submission
 from attendance.models import Attendance
@@ -201,38 +201,42 @@ class Command(BaseCommand):
             if not legacy_class.students.exists():
                 legacy_class.delete()
 
-        course_data = [
-            ('Mathematics', 'MATH', sciences),
-            ('English Language', 'ENG', arts),
-            ('Biology', 'BIO', sciences),
-            ('Chemistry', 'CHEM', sciences),
-            ('Physics', 'PHY', sciences),
-            ('Geography', 'GEO', arts),
-            ('ICT', 'ICT', arts),
-        ]
-        courses = {}
-        for name, code, department in course_data:
-            course, _ = Course.objects.update_or_create(
-                code=code,
-                defaults={
-                    'name': name,
-                    'department': department,
-                    'credit_units': 4 if code in ('MATH', 'ENG') else 3,
-                    'is_active': True,
-                },
-            )
-            courses[code] = course
-
-        subject_teacher = {
-            'MATH': teachers[0], 'PHY': teachers[0],
-            'ENG': teachers[1], 'GEO': teachers[1],
-            'BIO': teachers[2], 'CHEM': teachers[2],
-            'ICT': teachers[3],
-        }
-        subject_departments = {
-            'MATH': [arts, sciences], 'ENG': [arts, sciences],
-            'ICT': [arts, sciences], 'BIO': [sciences], 'CHEM': [sciences],
-            'PHY': [sciences], 'GEO': [arts],
+        subject_data = {
+            'MATH': {
+                'name': 'Mathematics',
+                'teacher': teachers[0],
+                'departments': [arts, sciences],
+            },
+            'ENG': {
+                'name': 'English Language',
+                'teacher': teachers[1],
+                'departments': [arts, sciences],
+            },
+            'ICT': {
+                'name': 'ICT',
+                'teacher': teachers[3],
+                'departments': [arts, sciences],
+            },
+            'BIO': {
+                'name': 'Biology',
+                'teacher': teachers[2],
+                'departments': [sciences],
+            },
+            'CHEM': {
+                'name': 'Chemistry',
+                'teacher': teachers[2],
+                'departments': [sciences],
+            },
+            'PHY': {
+                'name': 'Physics',
+                'teacher': teachers[0],
+                'departments': [sciences],
+            },
+            'GEO': {
+                'name': 'Geography',
+                'teacher': teachers[1],
+                'departments': [arts],
+            },
         }
         shared_codes = ['MATH', 'ENG', 'ICT']
         subjects_by_class = {}
@@ -249,21 +253,19 @@ class Command(BaseCommand):
 
             subjects = []
             for code in subject_codes:
-                course = courses[code]
-                teacher = subject_teacher[code]
+                data = subject_data[code]
                 subject, _ = Subject.objects.update_or_create(
                     code=code,
                     school_class=school_class,
                     academic_year=year,
                     defaults={
-                        'name': course.name,
-                        'course': course,
-                        'teacher': teacher.user,
+                        'name': data['name'],
+                        'teacher': data['teacher'].user,
                         'term': current_term,
                         'is_active': True,
                     },
                 )
-                subject.departments.set(subject_departments[code])
+                subject.departments.set(data['departments'])
                 subjects.append(subject)
             for stale_subject in school_class.subjects.exclude(code__in=subject_codes):
                 if stale_subject.results.exists():

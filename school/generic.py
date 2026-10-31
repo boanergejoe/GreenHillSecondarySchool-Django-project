@@ -21,6 +21,11 @@ def mark_required_fields(form, exclusions=()):
             or isinstance(widget, (forms.CheckboxInput, forms.FileInput))
         ):
             continue
+        if isinstance(widget, (forms.CheckboxSelectMultiple, forms.RadioSelect)):
+            field.required = True
+            widget.attrs.pop('required', None)
+            widget.attrs.pop('aria-required', None)
+            continue
         field.required = True
         widget.attrs['required'] = 'required'
         widget.attrs['aria-required'] = 'true'
