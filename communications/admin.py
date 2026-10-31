@@ -5,8 +5,11 @@ from .models import Announcement, Notification
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ('title', 'audience', 'is_published', 'event_date', 'created_by', 'created_at')
-    list_filter = ('audience', 'is_published')
+    list_display = (
+        'title', 'audience', 'is_published', 'is_public', 'event_date',
+        'created_by', 'created_at',
+    )
+    list_filter = ('audience', 'is_published', 'is_public')
     search_fields = ('title', 'message')
     autocomplete_fields = ('created_by',)
     list_select_related = ('created_by',)

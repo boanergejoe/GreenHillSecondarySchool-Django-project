@@ -143,12 +143,18 @@ class StudentDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         student = self.object
+        results = student.results.select_related('subject', 'examination')
+        if self.request.user.role in ('student', 'parent'):
+            results = results.filter(examination__is_published=True)
         context.update({
             'page_title': f'Student - {student.full_name}',
-            'results': student.results.select_related('subject', 'examination')[:10],
+            'results': results[:10],
             'attendance': student.attendance_records.select_related('subject')[:10],
             'payments': student.payments.select_related('fee')[:10],
             'submissions': student.submissions.select_related('assignment')[:10],
+            'can_view_medical_data': user_has_role(
+                self.request.user, ('accountant',)
+            ),
             'attendance_percentage': student.attendance_percentage,
             'enrollments': student.enrollments.select_related(
                 'school_class', 'academic_year'

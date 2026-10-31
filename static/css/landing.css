@@ -342,6 +342,8 @@ p {
     align-items: center;
     justify-content: center;
     gap: 9px;
+    max-width: 100%;
+    min-width: 0;
     min-height: 44px;
     padding: 11px 19px;
     border: 1px solid transparent;
@@ -349,7 +351,9 @@ p {
     font-size: 14px;
     font-weight: 700;
     line-height: 1.2;
-    white-space: nowrap;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -625,6 +629,7 @@ p {
     display: block;
     margin-top: 8px;
     color: transparent;
+    background-image: linear-gradient(110deg, #fff4c2 5%, #f5dc8a 58%, #e8c75b 100%);
 }
 
 .hero-lead {
@@ -3338,5 +3343,262 @@ p {
 
     .dashboard-device {
         transform: none;
+    }
+}
+
+.school-hero {
+    min-height: 690px;
+    padding-bottom: 90px;
+}
+
+.school-hero .hero-layout {
+    grid-template-columns: 1.1fr 0.9fr;
+}
+
+.school-hero .hero-lead {
+    color: #e6efe9;
+}
+
+.school-welcome-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 430px;
+    padding: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 24px;
+    background: #ffffff;
+    color: #11231a;
+    box-shadow: var(--shadow-lg);
+}
+
+.school-welcome-card img {
+    width: 76px;
+    height: 76px;
+    margin-bottom: 20px;
+    border-radius: 16px;
+    object-fit: cover;
+}
+
+.school-card-kicker {
+    color: #14472a;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.school-welcome-card h2 {
+    margin: 8px 0;
+    font-size: 26px;
+}
+
+.school-welcome-card p {
+    margin-bottom: 15px;
+    color: #42564a;
+    font-weight: 700;
+}
+
+.school-welcome-card address {
+    margin-bottom: 12px;
+    color: #35483c;
+    font-style: normal;
+}
+
+.school-welcome-card a {
+    color: #14472a;
+    font-weight: 800;
+}
+
+.school-welcome-card a i {
+    margin-right: 8px;
+}
+
+.school-intro-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: center;
+    gap: 48px;
+}
+
+.school-intro-grid h2 {
+    margin: 0;
+    font-size: clamp(32px, 4vw, 48px);
+}
+
+.school-contact-line {
+    margin-top: 18px;
+    color: var(--muted);
+}
+
+.school-section {
+    background: #f5f8f5;
+}
+
+.school-curriculum-section {
+    background: #ffffff;
+}
+
+.school-term-grid,
+.school-news-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.school-term-card,
+.school-news-card {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.school-term-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.school-term-card > span {
+    color: #14472a;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.school-term-card strong {
+    font-size: 17px;
+}
+
+.school-term-card small {
+    color: #14472a;
+    font-weight: 700;
+}
+
+.curriculum-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.curriculum-list li {
+    padding: 11px 17px;
+    border: 1px solid #c8d9cc;
+    border-radius: 999px;
+    background: #f4f8f5;
+    color: #173c26;
+    font-weight: 700;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.curriculum-list li:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(17, 35, 26, 0.1);
+}
+
+.school-news-card time {
+    color: #14472a;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.school-news-card h3 {
+    margin: 10px 0;
+    font-size: 20px;
+}
+
+.school-news-card p,
+.school-empty-note {
+    color: var(--muted);
+    line-height: 1.7;
+}
+
+.school-empty-note {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.school-gallery-section {
+    background: #ffffff;
+}
+
+.school-gallery-section .gallery-item > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.school-admissions-section {
+    padding: 72px 0;
+    background: linear-gradient(135deg, #06170e, #103a23);
+}
+
+.school-admissions-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 36px;
+    color: #ffffff;
+}
+
+.school-admissions-card h2 {
+    margin: 0 0 12px;
+    font-size: clamp(30px, 4vw, 44px);
+}
+
+.school-admissions-card p {
+    max-width: 620px;
+    color: #e6efe9;
+}
+
+.school-admissions-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 767px) {
+    .school-hero {
+        min-height: auto;
+        padding-bottom: 76px;
+    }
+
+    .school-hero .hero-layout,
+    .school-intro-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .school-welcome-card {
+        max-width: none;
+        padding: 24px;
+    }
+
+    .school-term-grid,
+    .school-news-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .school-admissions-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .school-admissions-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .school-admissions-actions .btn {
+        width: 100%;
     }
 }

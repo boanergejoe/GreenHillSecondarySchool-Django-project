@@ -15,7 +15,7 @@ from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 from .forms import ProfileForm, StaffForm, StyledLoginForm
 from .mixins import RoleRequiredMixin, role_required
 from .models import User
-from academics.access import teacher_classes
+from academics.access import teacher_classes, teacher_subjects
 from finance.services import fee_totals_for_student
 from school.generic import RequiredCreateFieldsMixin
 
@@ -220,7 +220,9 @@ def _student_dashboard_context(user):
     ).count()
     percentage = round(attended / total * 100, 1) if total else 0
 
-    results = student.results.select_related('subject', 'examination').order_by(
+    results = student.results.filter(
+        examination__is_published=True
+    ).select_related('subject', 'examination').order_by(
         '-examination__start_date', 'subject__name'
     )[:12]
 
@@ -291,7 +293,9 @@ def _parent_dashboard_context(user):
             'attendance_percentage': round(present / total * 100, 1) if total else 0,
             'balance': f'{balance:,.2f}',
             'paid': f'{paid:,.2f}',
-            'results': child.results.select_related('subject', 'examination')[:5],
+            'results': child.results.filter(
+                examination__is_published=True
+            ).select_related('subject', 'examination')[:5],
         })
 
     return {'parent': parent, 'children': child_rows, 'child_count': len(child_rows)}

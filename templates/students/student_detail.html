@@ -69,11 +69,15 @@
                     <div class="item"><span>Department</span><strong>{{ student.department.name|default:"Not assigned" }}</strong></div>
                     <div class="item"><span>Registered Term(s)</span><strong>{% for enrollment in enrollments %}{{ enrollment.get_term_display }} ({{ enrollment.academic_year.name }}){% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}</strong></div>
                     <div class="item"><span>Date of Birth</span><strong>{{ student.date_of_birth|date:"d M Y"|default:"-" }}</strong></div>
+                    {% if can_view_medical_data %}
                     <div class="item"><span>Blood Group</span><strong>{{ student.blood_group|default:"-" }}</strong></div>
+                    {% endif %}
                     <div class="item"><span>Email</span><strong>{{ student.user.email|default:"-" }}</strong></div>
                     <div class="item"><span>Phone</span><strong>{{ student.user.phone|default:"-" }}</strong></div>
                     <div class="item"><span>Address</span><strong>{{ student.address|default:"-" }}</strong></div>
+                    {% if can_view_medical_data %}
                     <div class="item"><span>Medical Notes</span><strong>{{ student.medical_notes|default:"None" }}</strong></div>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -385,14 +385,30 @@
         var heroTimeline = window.gsap.timeline({
             defaults: { ease: "power3.out", duration: 0.85 }
         });
+        var heroEyebrow = document.querySelector(".hero .eyebrow");
+        var heroTitle = document.querySelector(".hero-title");
+        var heroLead = document.querySelector(".hero-lead");
+        var heroActions = document.querySelector(".hero-actions");
+        var heroVisual = document.querySelector(".school-welcome-card, .dashboard-device");
 
-        heroTimeline
-            .from(".hero .eyebrow", { y: 18, opacity: 0, duration: 0.55 })
-            .from(".hero-title", { y: 28, opacity: 0 }, "-=0.28")
-            .from(".hero-lead", { y: 22, opacity: 0 }, "-=0.55")
-            .from(".hero-actions", { y: 18, opacity: 0 }, "-=0.58")
-            .from(".hero-trust", { y: 16, opacity: 0 }, "-=0.62")
-            .from(".dashboard-device", { y: 34, opacity: 0, rotateY: -10, duration: 1.1, clearProps: "transform,opacity" }, "-=0.86")
-            .from(".float-card", { scale: 0.88, opacity: 0, stagger: 0.12, duration: 0.6, clearProps: "transform,opacity" }, "-=0.45");
+        if (heroEyebrow) {
+            heroTimeline.from(heroEyebrow, { y: 18, opacity: 0, duration: 0.55 });
+        }
+        if (heroTitle) {
+            heroTimeline.from(heroTitle, { y: 28, opacity: 0 }, "-=0.28");
+        }
+        if (heroLead) {
+            heroTimeline.from(heroLead, { y: 22, opacity: 0 }, "-=0.55");
+        }
+        if (heroActions) {
+            heroTimeline.from(heroActions, { y: 18, opacity: 0 }, "-=0.58");
+        }
+        if (heroVisual) {
+            heroTimeline.from(
+                heroVisual,
+                { y: 34, opacity: 0, duration: 0.9, clearProps: "transform,opacity" },
+                "-=0.55"
+            );
+        }
     }
 })();

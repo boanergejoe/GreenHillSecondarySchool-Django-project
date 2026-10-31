@@ -19,6 +19,10 @@ class Announcement(models.Model):
     attachment = models.FileField(upload_to='announcements/', blank=True, null=True)
     event_date = models.DateField(null=True, blank=True)
     is_published = models.BooleanField(default=True)
+    is_public = models.BooleanField(
+        default=False,
+        help_text='Allow this announcement to appear on the public school website.',
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='announcements',

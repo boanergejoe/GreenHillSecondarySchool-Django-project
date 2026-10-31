@@ -14,10 +14,10 @@ A Django-based college and high school management system for **Green Hill Second
 - Examinations, result entry, result lists, report cards, and PDF report cards.
 - Fee structures, payments, receipts, fee statements, and financial overview.
 - Assignments, student submissions, and teacher review/grading.
-- Announcements and user notifications.
+- Announcements and user notifications; published announcements can be explicitly marked for the public homepage.
 - Excel and PDF exports for students, teachers, attendance, results, and finance.
 - Responsive Bootstrap 5 interface with dashboards and charts.
-- Public premium landing page at `/` with the uploaded school logo, animated sections, testimonials, role overviews, and accessible navigation.
+- Official school homepage at `/` with admissions guidance, term dates, current subjects, public school news, and school contact information; it does not present sample dashboard figures as live statistics.
 - Public legal pages for privacy, terms, cookies, acceptable use, data protection, and child protection, with a cookie-consent banner.
 - Create forms enforce all visible fields as required, excluding generated IDs, checkboxes, file uploads, and optional class stream/teacher fields.
 
@@ -46,7 +46,7 @@ python manage.py seed_demo
 python manage.py runserver
 ```
 
-Open `http://127.0.0.1:8000/` for the public landing page, then use **Portal Login** to access the management system.
+Open `http://127.0.0.1:8000/` for the public school homepage, then use **Portal Login** to access the management system.
 
 The local `db.sqlite3` is excluded from Git. Run both `migrate` and `seed_demo` to create it and populate the demo data; both commands are safe to run again.
 
@@ -124,7 +124,7 @@ python manage.py collectstatic
 
 ## Testing
 
-The integration suite covers the public landing page and legal pages, required-field create validation, term limits and dates, streamed classes, differentiated tuition fees, role dashboards, management pages, role-based access restrictions, linked user creation for students/teachers/parents, report exports, receipts, and PDF report cards.
+The integration suite covers the school homepage and public-news visibility, legal pages, student health-data access, required-field create validation, term limits and dates, streamed classes, differentiated tuition fees, role dashboards, attendance, fee payments and receipts, published-result access, management pages, role-based access restrictions, linked user creation for students/teachers/parents, report exports, and PDF report cards.
 
 ```powershell
 python manage.py test

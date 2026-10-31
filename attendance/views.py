@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.generic import ListView
 
-from academics.access import teacher_classes
+from academics.access import teacher_classes, teacher_subjects
 from academics.models import SchoolClass, Subject
 from accounts.mixins import RoleRequiredMixin, role_required
 from students.models import Student
@@ -26,9 +26,7 @@ class AttendanceListView(RoleRequiredMixin, ListView):
             'student__user', 'school_class', 'subject', 'recorded_by'
         )
         if user.role == 'teacher':
-            qs = qs.filter(
-                Q(school_class__subjects__teacher=user) | Q(school_class__class_teacher=user)
-            ).distinct()
+            qs = qs.filter(school_class__in=teacher_classes(user))
         elif user.role == 'student':
             qs = qs.filter(student__user=user)
         elif user.role == 'parent':
@@ -89,7 +87,7 @@ def take_attendance(request):
         ).select_related('user').order_by('user__first_name', 'user__last_name')
         subjects = Subject.objects.filter(school_classes=school_class)
         if user.role == 'teacher':
-            subjects = subjects.filter(teacher=user)
+            subjects = subjects.filter(pk__in=teacher_subjects(user))
 
     if request.method == 'POST' and school_class:
         subject = None
@@ -98,7 +96,7 @@ def take_attendance(request):
                 pk=selected_subject, school_classes=school_class
             )
             if user.role == 'teacher':
-                subject_scope = subject_scope.filter(teacher=user)
+                subject_scope = subject_scope.filter(pk__in=teacher_subjects(user))
             subject = subject_scope.first()
             if not subject:
                 messages.error(request, 'You cannot record attendance for that subject.')

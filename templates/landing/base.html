@@ -4,21 +4,21 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ school_name }} | Premium School Management System{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}{{ school_name }} provides a premium management platform for students, teachers, academics, attendance, examinations, finance, and parent engagement.{% endblock %}">
+    <title>{% block title %}{{ school_name }} | Knowledge, Integrity, Excellence{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Welcome to {{ school_name }}. Find school information, current term dates, curriculum subjects, admissions contacts, and portal access.{% endblock %}">
     <meta name="theme-color" content="#1c5a35">
     <meta name="color-scheme" content="light">
     <link rel="canonical" href="{{ request.build_absolute_uri }}">
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ school_name }}">
-    <meta property="og:title" content="{{ school_name }} | Smarter School Management">
-    <meta property="og:description" content="Bring the entire school community together with one intelligent, beautifully simple management platform.">
+    <meta property="og:title" content="{{ school_name }} | Knowledge, Integrity, Excellence">
+    <meta property="og:description" content="School information, current term dates, curriculum subjects, admissions contacts, and portal access for the Green Hill community.">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/logo.jpeg' %}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ school_name }} | Smarter School Management">
-    <meta name="twitter:description" content="A premium all-in-one platform for modern schools and colleges.">
+    <meta name="twitter:title" content="{{ school_name }} | Knowledge, Integrity, Excellence">
+    <meta name="twitter:description" content="School information, term dates, curriculum, admissions contacts, and portal access.">
     <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/logo.jpeg' %}">
 
     <link rel="icon" type="image/jpeg" href="{% static 'images/logo.jpeg' %}">
@@ -27,8 +27,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/landing.css' %}">
-    <link rel="stylesheet" href="{% static 'css/legal.css' %}">
+    <link rel="stylesheet" href="{% static 'css/landing.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/legal.css' %}?v=3">
     {% block extra_head %}{% endblock %}
     <noscript>
         <style>
@@ -62,10 +62,10 @@
             <div class="nav-menu" id="primaryNav">
                 <div class="nav-links">
                     <a class="nav-link" href="{% url 'home' %}#home">Home</a>
-                    <a class="nav-link" href="{% url 'home' %}#features">Features</a>
-                    <a class="nav-link" href="{% url 'home' %}#gallery">Gallery</a>
-                    <a class="nav-link" href="{% url 'home' %}#solutions">Solutions</a>
-                    <a class="nav-link" href="{% url 'home' %}#about">About Us</a>
+                    <a class="nav-link" href="{% url 'home' %}#about">Our School</a>
+                    <a class="nav-link" href="{% url 'home' %}#academics">Curriculum</a>
+                    <a class="nav-link" href="{% url 'home' %}#term-dates">Term Dates</a>
+                    <a class="nav-link" href="{% url 'home' %}#news">News</a>
                     <a class="nav-link" href="{% url 'home' %}#contact">Contact</a>
                 </div>
                 <div class="nav-actions">
@@ -92,7 +92,7 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
-    <script src="{% static 'js/landing.js' %}"></script>
+    <script src="{% static 'js/landing.js' %}?v=3"></script>
     <script>
         (function () {
             function revealAnimatedContent() {

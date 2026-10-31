@@ -9,7 +9,8 @@ class AnnouncementForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Announcement
         fields = [
-            'title', 'message', 'audience', 'attachment', 'event_date', 'is_published',
+            'title', 'message', 'audience', 'attachment', 'event_date',
+            'is_published', 'is_public',
         ]
         widgets = {
             'message': forms.Textarea(attrs={'rows': 5}),

@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from academics.access import teacher_classes
+from academics.access import teacher_classes, teacher_subjects
 from academics.models import SchoolClass, Subject
 from accounts.mixins import role_required
 from attendance.models import Attendance
@@ -100,7 +100,7 @@ def reports_index(request):
             'is_teacher': True,
             'student_count': Student.objects.filter(school_class__in=classes).count(),
             'class_count': classes.count(),
-            'subject_count': Subject.objects.filter(teacher=request.user).count(),
+            'subject_count': teacher_subjects(request.user).count(),
         })
     else:
         context.update({

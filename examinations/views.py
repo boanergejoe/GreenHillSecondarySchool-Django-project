@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.staticfiles import finders
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -97,18 +97,32 @@ def exam_detail(request, pk):
         and not teacher_classes(request.user).filter(pk=exam.school_class_id).exists()
     ):
         raise PermissionDenied('You cannot view this examination.')
+    if request.user.role in ('student', 'parent') and not exam.is_published:
+        raise PermissionDenied('This examination has not been published.')
 
     subjects = Subject.objects.filter(
         academic_year=exam.academic_year
     ).prefetch_related('school_classes')
     if exam.school_class_id:
         subjects = subjects.filter(school_classes=exam.school_class)
+    if request.user.role == 'student':
+        subjects = subjects.filter(
+            results__student__user=request.user,
+            results__examination=exam,
+        )
+    elif request.user.role == 'parent':
+        subjects = subjects.filter(
+            results__student__parent__user=request.user,
+            results__examination=exam,
+        )
     if request.user.role == 'teacher':
         subjects = subjects.filter(
             Q(teacher=request.user)
             | Q(school_classes__in=teacher_classes(request.user))
         ).distinct()
-    subject_rows = subjects.annotate(result_count=Count('results')).select_related(
+    subject_rows = subjects.annotate(
+        result_count=Count('results', filter=Q(results__examination=exam))
+    ).select_related(
         'teacher'
     ).prefetch_related(
         'school_classes'
@@ -116,6 +130,10 @@ def exam_detail(request, pk):
     results_qs = exam.results.select_related('student__user', 'subject')
     if request.user.role == 'teacher':
         results_qs = results_qs.filter(subject__in=subjects)
+    elif request.user.role == 'student':
+        results_qs = results_qs.filter(student__user=request.user)
+    elif request.user.role == 'parent':
+        results_qs = results_qs.filter(student__parent__user=request.user)
     results = results_qs[:20]
     return render(request, 'examinations/exam_detail.html', {
         'page_title': f'Examination - {exam.name}',
@@ -207,16 +225,18 @@ def result_list(request):
         'student__user', 'student__school_class', 'examination', 'subject'
     ).prefetch_related('subject__school_classes')
     if user.role == 'student':
-        qs = qs.filter(student__user=user)
+        qs = qs.filter(
+            student__user=user,
+            examination__is_published=True,
+        )
     elif user.role == 'parent':
-        qs = qs.filter(student__parent__user=user)
+        qs = qs.filter(
+            student__parent__user=user,
+            examination__is_published=True,
+        )
     elif user.role == 'teacher':
         qs = qs.filter(
-            Q(subject__teacher=user)
-            | Q(
-                student__school_class__class_teacher=user,
-                subject__school_classes=F('student__school_class'),
-            )
+            subject__in=teacher_subjects(user)
         ).distinct()
 
     exam_id = request.GET.get('examination', '').strip()
@@ -247,6 +267,8 @@ def result_list(request):
         examinations = Examination.objects.filter(
             Q(school_class__in=classes) | Q(school_class__isnull=True)
         ).select_related('academic_year').distinct()
+    elif user.role in ('student', 'parent'):
+        examinations = examinations.filter(is_published=True)
 
     return render(request, 'examinations/result_list.html', {
         'page_title': 'Examination Results',
@@ -303,6 +325,10 @@ def _can_access_report_card(user, student):
     return False
 
 
+def _results_are_published_for_user(user, exam):
+    return user.role not in ('student', 'parent') or exam.is_published
+
+
 @login_required
 def report_card(request, student_id, exam_id):
     student = get_object_or_404(
@@ -314,6 +340,8 @@ def report_card(request, student_id, exam_id):
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot view this report card.')
+    if not _results_are_published_for_user(request.user, exam):
+        raise PermissionDenied('This report card has not been published.')
     context = _report_card_context(student, exam)
     context['page_title'] = f'Report Card - {student.full_name}'
     return render(request, 'examinations/report_card.html', context)
@@ -334,6 +362,8 @@ def report_card_pdf(request, student_id, exam_id):
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot download this report card.')
+    if not _results_are_published_for_user(request.user, exam):
+        raise PermissionDenied('This report card has not been published.')
 
     context = _report_card_context(student, exam)
     response = HttpResponse(content_type='application/pdf')

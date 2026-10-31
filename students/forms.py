@@ -51,6 +51,13 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
         self.fields['student_id'].help_text = 'Leave blank to generate automatically.'
         self.fields['parent'].queryset = Parent.objects.select_related('user')
         self.fields['department'].required = True
+        self.fields['blood_group'].help_text = (
+            'Collected for emergency care; only administrators and accountants can view it.'
+        )
+        self.fields['medical_notes'].help_text = (
+            'Record only health information needed for student safety. Access is limited '
+            'to administrators and accountants.'
+        )
         self.fields['school_class'].queryset = SchoolClass.objects.select_related(
             'academic_year'
         ).order_by('name')

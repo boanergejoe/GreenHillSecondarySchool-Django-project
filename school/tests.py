@@ -17,8 +17,10 @@ from academics.models import (
 )
 from accounts.models import User
 from assignments.models import Assignment
+from attendance.models import Attendance
+from communications.models import Announcement
 from examinations.forms import ExaminationForm
-from examinations.models import Examination
+from examinations.models import Examination, Result
 from finance.forms import FeeForm
 from finance.models import Fee, Payment
 from finance.services import active_fees_for_student
@@ -184,6 +186,169 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         response = self.client.get(reverse('students:parent_detail', args=[other_parent.pk]))
         self.assertEqual(response.status_code, 403)
 
+    def test_student_health_details_are_hidden_from_parent_and_student(self):
+        student = User.objects.get(username='student1').student_profile
+        student.blood_group = 'AB+'
+        student.medical_notes = 'Sensitive medical test note.'
+        student.save(update_fields=['blood_group', 'medical_notes'])
+
+        parent = self.login('parent1')
+        response = self.client.get(reverse('students:student_detail', args=[student.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'AB+')
+        self.assertNotContains(response, 'Sensitive medical test note.')
+
+        self.login('student1')
+        response = self.client.get(reverse('students:student_detail', args=[student.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'AB+')
+        self.assertNotContains(response, 'Sensitive medical test note.')
+
+        self.login('accountant')
+        response = self.client.get(reverse('students:student_detail', args=[student.pk]))
+        self.assertContains(response, 'AB+')
+        self.assertContains(response, 'Sensitive medical test note.')
+
+    def test_teacher_records_attendance_and_parent_can_view_child_record(self):
+        teacher = self.login('teacher1')
+        student = Student.objects.filter(
+            school_class__in=teacher_classes(teacher),
+            parent__isnull=False,
+            status=Student.Status.ACTIVE,
+        ).select_related('parent__user', 'school_class').first()
+        self.assertIsNotNone(student)
+        selected_date = timezone.localdate()
+        classmates = Student.objects.filter(
+            school_class=student.school_class,
+            status=Student.Status.ACTIVE,
+        )
+        post_data = {
+            'school_class': student.school_class_id,
+            'date': selected_date.isoformat(),
+            'subject': '',
+        }
+        post_data.update({
+            f'status_{classmate.pk}': (
+                Attendance.Status.ABSENT
+                if classmate.pk == student.pk else Attendance.Status.PRESENT
+            )
+            for classmate in classmates
+        })
+
+        response = self.client.post(reverse('attendance:take'), post_data)
+        self.assertRedirects(response, reverse('attendance:list'))
+        record = Attendance.objects.get(
+            student=student, school_class=student.school_class, date=selected_date,
+            subject=None,
+        )
+        self.assertEqual(record.status, Attendance.Status.ABSENT)
+        self.assertEqual(record.recorded_by, teacher)
+
+        self.client.force_login(student.parent.user)
+        response = self.client.get(reverse('attendance:list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, student.student_id)
+        self.assertContains(response, 'Absent')
+
+    def test_accountant_records_payment_and_parent_can_download_receipt(self):
+        parent = Parent.objects.get(user__username='parent1')
+        student = parent.children.select_related('user', 'school_class').first()
+        fee = active_fees_for_student(student).first()
+        self.assertIsNotNone(fee)
+        accountant = self.login('accountant')
+        response = self.client.post(reverse('finance:payment_create'), {
+            'student': student.pk,
+            'fee': fee.pk,
+            'amount': '2500.00',
+            'payment_date': timezone.localdate().isoformat(),
+            'method': Payment.Method.CASH,
+            'reference': 'E2E-PAYMENT-001',
+            'remarks': 'Workflow test payment',
+        })
+        self.assertRedirects(response, reverse('finance:payment_list'))
+        payment = Payment.objects.get(reference='E2E-PAYMENT-001')
+        self.assertTrue(payment.receipt_number)
+        self.assertEqual(payment.recorded_by, accountant)
+
+        self.client.force_login(parent.user)
+        response = self.client.get(reverse('finance:fee_statement', args=[student.pk]))
+        self.assertContains(response, payment.receipt_number)
+        response = self.client.get(reverse('finance:payment_detail', args=[payment.pk]))
+        self.assertContains(response, payment.receipt_number)
+        response = self.client.get(reverse('finance:receipt_pdf', args=[payment.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_results_are_hidden_until_teacher_entry_is_published(self):
+        teacher = self.login('teacher1')
+        school_class = Examination.objects.filter(
+            school_class__in=teacher_classes(teacher)
+        ).values_list('school_class_id', flat=True).first()
+        self.assertIsNotNone(school_class)
+        exam = Examination.objects.filter(school_class_id=school_class).first()
+        student = Student.objects.filter(
+            school_class_id=school_class,
+            parent__isnull=False,
+            status=Student.Status.ACTIVE,
+        ).select_related('parent__user').first()
+        subject = Subject.objects.filter(
+            academic_year=exam.academic_year,
+            school_classes=school_class,
+        ).first()
+        self.assertIsNotNone(student)
+        self.assertIsNotNone(subject)
+        Examination.objects.filter(pk=exam.pk).update(is_published=False)
+        exam.refresh_from_db()
+
+        response = self.client.post(
+            reverse('examinations:enter_results', args=[exam.pk]),
+            {
+                'subject': subject.pk,
+                f'marks_{student.pk}': '77',
+            },
+        )
+        self.assertRedirects(
+            response, reverse('examinations:exam_detail', args=[exam.pk])
+        )
+        result = Result.objects.get(
+            student=student, examination=exam, subject=subject
+        )
+        self.assertEqual(result.marks_obtained, Decimal('77'))
+
+        self.client.force_login(student.parent.user)
+        response = self.client.get(reverse('examinations:result_list'))
+        self.assertFalse(response.context['results'].filter(pk=result.pk).exists())
+        response = self.client.get(
+            reverse('examinations:report_card', args=[student.pk, exam.pk])
+        )
+        self.assertEqual(response.status_code, 403)
+
+        admin = User.objects.get(username='admin')
+        self.client.force_login(admin)
+        response = self.client.post(
+            reverse('examinations:exam_update', args=[exam.pk]),
+            {
+                'name': exam.name,
+                'exam_type': exam.exam_type,
+                'academic_year': exam.academic_year_id,
+                'term': exam.term_id,
+                'school_class': exam.school_class_id,
+                'start_date': exam.start_date.isoformat(),
+                'end_date': exam.end_date.isoformat(),
+                'total_marks': exam.total_marks,
+                'is_published': 'on',
+            },
+        )
+        self.assertRedirects(response, reverse('examinations:exam_list'))
+
+        self.client.force_login(student.parent.user)
+        response = self.client.get(reverse('examinations:result_list'))
+        self.assertTrue(response.context['results'].filter(pk=result.pk).exists())
+        response = self.client.get(
+            reverse('examinations:report_card', args=[student.pk, exam.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_student_create_form_creates_linked_user(self):
         self.login('admin')
         school_class = SchoolClass.objects.first()
@@ -313,16 +478,69 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'landing/home.html')
-        self.assertContains(response, 'Smarter School Management.')
+        self.assertContains(response, 'Knowledge. Integrity.')
+        self.assertContains(response, 'Admissions enquiries')
+        self.assertContains(response, 'Term dates')
+        self.assertContains(response, 'Current curriculum subjects')
         self.assertContains(response, settings.SCHOOL_NAME)
         self.assertContains(response, settings.SCHOOL_ADDRESS)
         self.assertContains(response, settings.SCHOOL_PHONE_PRIMARY)
         self.assertContains(response, reverse('accounts:login'))
+        self.assertContains(response, f'href="mailto:{settings.SCHOOL_EMAIL}"')
+        self.assertContains(
+            response,
+            f'href="tel:{settings.SCHOOL_PHONE_PRIMARY.replace(" ", "")}"',
+        )
+        self.assertContains(
+            response,
+            f'href="tel:{settings.SCHOOL_PHONE_SECONDARY.replace(" ", "")}"',
+        )
+        self.assertNotContains(response, '1,248')
+        self.assertNotContains(response, '86</strong>')
+        self.assertNotContains(response, 'Live snapshot')
+
+        admin = User.objects.get(username='admin')
+        Announcement.objects.create(
+            title='Public open day',
+            message='Families may contact the school office for details.',
+            audience=Announcement.Audience.ALL,
+            is_published=True,
+            is_public=True,
+            created_by=admin,
+        )
+        Announcement.objects.create(
+            title='Internal staff reminder',
+            message='Staff-only information.',
+            audience=Announcement.Audience.TEACHERS,
+            is_published=True,
+            is_public=False,
+            created_by=admin,
+        )
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'Public open day')
+        self.assertNotContains(response, 'Internal staff reminder')
 
         self.login('admin')
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('accounts:dashboard'))
+
+    def test_landing_curriculum_lists_each_subject_name_once(self):
+        academic_year = AcademicYear.objects.get(is_current=True)
+        existing_subject = Subject.objects.filter(academic_year=academic_year).first()
+        duplicate_subject = Subject.objects.create(
+            name=existing_subject.name.upper(),
+            code='DUPLICATE',
+            academic_year=academic_year,
+        )
+        duplicate_subject.school_classes.set(existing_subject.school_classes.all())
+
+        response = self.client.get(reverse('home'))
+        subjects = response.context['curriculum_subjects']
+        normalized_names = [name.casefold() for name in subjects]
+
+        self.assertEqual(len(normalized_names), len(set(normalized_names)))
+        self.assertEqual(normalized_names.count(existing_subject.name.casefold()), 1)
 
     def test_create_forms_require_visible_fields_but_not_generated_ids_or_files(self):
         self.login('admin')
@@ -341,6 +559,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
                 form.fields[name].widget, forms.CheckboxSelectMultiple
             ):
                 self.assertIn('required', form.fields[name].widget.attrs, name)
+        self.assertIn('student safety', form.fields['medical_notes'].help_text)
         self.assertFalse(form.fields['student_id'].required)
 
         response = self.client.get(reverse('accounts:user_create'))

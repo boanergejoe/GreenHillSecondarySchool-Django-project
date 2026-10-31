@@ -1,21 +1,19 @@
 {% load static %}
-<div class="cookie-consent" id="cookieConsent" role="region" aria-label="Cookie consent" hidden>
+<div class="cookie-consent" id="cookieConsent" role="region" aria-labelledby="cookieConsentTitle" hidden>
     <div class="cookie-consent-copy">
-        <strong>Cookies and privacy</strong>
+        <strong id="cookieConsentTitle">Essential cookies</strong>
         <p>
-            We use essential cookies to keep your account secure and the site working.
-            Read our <a href="{% url 'cookie_policy' %}">Cookie Policy</a> and
-            <a href="{% url 'privacy_policy' %}">Privacy Policy</a>.
+            We use essential cookies for secure sign-in and site functions. We do not use advertising or
+            analytics cookies. Read our <a href="{% url 'cookie_policy' %}">Cookie Policy</a>.
         </p>
     </div>
     <div class="cookie-consent-actions">
-        <button type="button" class="cookie-btn cookie-btn-muted" data-cookie-choice="essential">Essential only</button>
-        <button type="button" class="cookie-btn cookie-btn-primary" data-cookie-choice="accepted">Accept</button>
+        <button type="button" class="cookie-btn cookie-btn-primary" data-cookie-choice="acknowledged">Got it</button>
     </div>
 </div>
 <script>
     (function () {
-        var storageKey = 'greenhill.cookieConsent';
+        var storageKey = 'greenhill.cookieNotice';
         var banner = document.getElementById('cookieConsent');
         if (!banner) {
             return;
