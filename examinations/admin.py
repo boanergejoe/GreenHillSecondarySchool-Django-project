@@ -13,8 +13,8 @@ class ExaminationAdmin(admin.ModelAdmin):
     list_display = ('name', 'exam_type', 'academic_year', 'term', 'school_class', 'start_date', 'end_date', 'is_published')
     list_filter = ('exam_type', 'academic_year', 'term', 'school_class', 'is_published')
     search_fields = ('name', 'school_class__name')
-    autocomplete_fields = ('academic_year', 'term', 'school_class')
-    list_select_related = ('academic_year', 'term', 'school_class')
+    autocomplete_fields = ('academic_year', 'school_class')
+    list_select_related = ('academic_year', 'school_class')
     date_hierarchy = 'start_date'
     inlines = [ResultInline]
 

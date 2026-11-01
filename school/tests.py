@@ -339,7 +339,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
                 'name': exam.name,
                 'exam_type': exam.exam_type,
                 'academic_year': exam.academic_year_id,
-                'term': exam.term_id,
+                'term': exam.term,
                 'school_class': exam.school_class_id,
                 'start_date': exam.start_date.isoformat(),
                 'end_date': exam.end_date.isoformat(),
@@ -666,6 +666,13 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         )
         self.assertEqual(list(student_form.fields['term'].choices), expected)
         self.assertEqual(
+            [
+                choice for choice in examination_form.fields['term'].choices
+                if choice[0]
+            ],
+            expected,
+        )
+        self.assertEqual(
             type(student_form.fields['term'].widget),
             type(subject_form.fields['school_classes'].widget),
         )
@@ -684,6 +691,41 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             ],
             list(Term.Name.choices),
         )
+
+    def test_examination_term_choices_work_without_database_term_rows(self):
+        self.login('admin')
+        year = AcademicYear.objects.get(name='2026')
+        school_class = SchoolClass.objects.filter(academic_year=year).first()
+        Term.objects.filter(academic_year=year).delete()
+
+        response = self.client.get(reverse('examinations:exam_create'))
+        self.assertEqual(response.status_code, 200)
+        term_choices = [
+            choice for choice in response.context['form'].fields['term'].choices
+            if choice[0]
+        ]
+        self.assertEqual(term_choices, list(Term.Name.choices))
+        admin_response = self.client.get(
+            reverse('admin:examinations_examination_add')
+        )
+        self.assertEqual(admin_response.status_code, 200)
+        for _, label in Term.Name.choices:
+            self.assertContains(admin_response, label)
+
+        response = self.client.post(reverse('examinations:exam_create'), {
+            'name': 'Term 3 Exams Without Calendar Rows',
+            'exam_type': Examination.ExamType.FINAL,
+            'academic_year': year.pk,
+            'term': Term.Name.TERM_3,
+            'school_class': school_class.pk,
+            'start_date': '2026-10-12',
+            'end_date': '2026-10-20',
+            'total_marks': 100,
+        })
+
+        self.assertRedirects(response, reverse('examinations:exam_list'))
+        exam = Examination.objects.get(name='Term 3 Exams Without Calendar Rows')
+        self.assertEqual(exam.term, Term.Name.TERM_3)
 
     def test_student_portal_displays_class_and_department(self):
         user = self.login('student1')

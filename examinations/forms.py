@@ -27,13 +27,10 @@ class ExaminationForm(BootstrapFormMixin, forms.ModelForm):
         start, end = cleaned.get('start_date'), cleaned.get('end_date')
         academic_year = cleaned.get('academic_year')
         school_class = cleaned.get('school_class')
-        term = cleaned.get('term')
         if start and end and end < start:
             raise forms.ValidationError('End date cannot be before the start date.')
         if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
             self.add_error('school_class', 'The class must belong to the selected academic year.')
-        if academic_year and term and term.academic_year_id != academic_year.pk:
-            self.add_error('term', 'The term must belong to the selected academic year.')
         return cleaned
 
 

@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 
+from academics.models import Term
+
 
 class Examination(models.Model):
     class ExamType(models.TextChoices):
@@ -19,9 +21,8 @@ class Examination(models.Model):
     academic_year = models.ForeignKey(
         'academics.AcademicYear', on_delete=models.CASCADE, related_name='examinations'
     )
-    term = models.ForeignKey(
-        'academics.Term', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='examinations',
+    term = models.CharField(
+        max_length=50, choices=Term.Name.choices, blank=True, default=''
     )
     school_class = models.ForeignKey(
         'academics.SchoolClass', on_delete=models.SET_NULL, null=True, blank=True,
@@ -48,11 +49,6 @@ class Examination(models.Model):
             and self.school_class.academic_year_id != self.academic_year_id
         ):
             errors['school_class'] = 'The class must belong to the selected academic year.'
-        if (
-            self.term_id and self.academic_year_id
-            and self.term.academic_year_id != self.academic_year_id
-        ):
-            errors['term'] = 'The term must belong to the selected academic year.'
         if errors:
             raise ValidationError(errors)
 

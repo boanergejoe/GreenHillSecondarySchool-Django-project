@@ -313,7 +313,7 @@
                 <tr>
                     <td class="fw-semibold">{{ report_exam.name }}</td>
                     <td>{{ report_exam.academic_year.name }}</td>
-                    <td>{{ report_exam.term.name|default:"-" }}</td>
+                    <td>{{ report_exam.get_term_display|default:"-" }}</td>
                     <td class="text-end">
                         <a href="{% url 'examinations:report_card' student.pk report_exam.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
                         <a href="{% url 'examinations:report_card_pdf' student.pk report_exam.pk %}" class="btn btn-sm btn-success ms-1">

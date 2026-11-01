@@ -414,7 +414,7 @@ class Command(BaseCommand):
             school_class=classes[0],
             defaults={
                 'exam_type': Examination.ExamType.MIDTERM,
-                'term': current_term,
+                'term': current_term.name,
                 'start_date': today - timedelta(days=14),
                 'end_date': today - timedelta(days=10),
                 'total_marks': 100,

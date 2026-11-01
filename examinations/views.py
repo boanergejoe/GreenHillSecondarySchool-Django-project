@@ -42,7 +42,8 @@ class ExaminationListView(BaseListView):
     search_fields = ['name', 'academic_year__name', 'school_class__name']
     columns = [
         ('Examination', 'name'), ('Type', 'get_exam_type_display'),
-        ('Academic Year', 'academic_year.name'), ('Class', 'school_class.name'),
+        ('Academic Year', 'academic_year.name'), ('Term', 'get_term_display'),
+        ('Class', 'school_class.name'),
         ('Start', 'start_date'), ('End', 'end_date'), ('Published', 'is_published'),
     ]
     create_url_name = 'examinations:exam_create'
@@ -89,7 +90,7 @@ class ExaminationDeleteView(BaseDeleteView):
 @login_required
 def exam_detail(request, pk):
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'term', 'school_class'), pk=pk
+        Examination.objects.select_related('academic_year', 'school_class'), pk=pk
     )
     if (
         request.user.role == 'teacher'
@@ -336,7 +337,7 @@ def report_card(request, student_id, exam_id):
         pk=student_id,
     )
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'term'), pk=exam_id
+        Examination.objects.select_related('academic_year'), pk=exam_id
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot view this report card.')
@@ -358,7 +359,7 @@ def report_card_pdf(request, student_id, exam_id):
         pk=student_id,
     )
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'term'), pk=exam_id
+        Examination.objects.select_related('academic_year'), pk=exam_id
     )
     if not _can_access_report_card(request.user, student):
         raise PermissionDenied('You cannot download this report card.')
@@ -455,7 +456,7 @@ def report_card_pdf(request, student_id, exam_id):
         ['Class', student.school_class.name if student.school_class else '-',
          'Department', department],
         ['Academic Year', exam.academic_year.name, 'Term',
-         exam.term.name if exam.term_id else '-'],
+         exam.get_term_display() or '-'],
         ['Examination', exam.name, 'Generated',
          context['generated_at'].strftime('%d %b %Y')],
     ]

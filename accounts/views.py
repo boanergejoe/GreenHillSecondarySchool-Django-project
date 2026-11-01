@@ -232,7 +232,7 @@ def _student_dashboard_context(user):
 
     report_cards = Examination.objects.filter(
         results__student=student, is_published=True
-    ).select_related('academic_year', 'term').distinct().order_by('-start_date')
+    ).select_related('academic_year').distinct().order_by('-start_date')
 
     subjects = Subject.objects.filter(
         school_classes=student.school_class
