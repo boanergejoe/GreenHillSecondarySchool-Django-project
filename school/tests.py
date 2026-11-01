@@ -113,6 +113,14 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200, url)
 
+    def test_accountant_can_load_fee_list_after_sign_in(self):
+        self.login('accountant')
+        response = self.client.get(reverse('finance:fee_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Fee Structure')
+        self.assertContains(response, 'Registration Fee')
+
     def test_teacher_dashboard_and_lists_render(self):
         self.login('teacher1')
         urls = [
@@ -698,6 +706,94 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         for term in terms:
             self.assertGreaterEqual(term.start_date, year.start_date)
             self.assertLessEqual(term.end_date, year.end_date)
+
+    def test_academic_year_form_adds_term_dates(self):
+        self.login('admin')
+        response = self.client.get(reverse('academics:year_create'))
+        self.assertEqual(response.status_code, 200)
+        for field in (
+            'term_1_start_date', 'term_1_end_date',
+            'term_2_start_date', 'term_2_end_date',
+            'term_3_start_date', 'term_3_end_date',
+        ):
+            self.assertContains(response, f'name="{field}"')
+            self.assertFalse(response.context['form'].fields[field].required)
+
+        year_list = self.client.get(reverse('academics:year_list'))
+        self.assertContains(year_list, 'Manage Term Dates')
+        self.assertContains(year_list, reverse('academics:term_list'))
+
+        response = self.client.post(reverse('academics:year_create'), {
+            'name': '2027',
+            'start_date': '2027-01-01',
+            'end_date': '2027-12-31',
+            'term_1_start_date': '2027-01-10',
+            'term_1_end_date': '2027-04-15',
+            'term_2_start_date': '2027-05-01',
+            'term_2_end_date': '2027-08-15',
+            'term_3_start_date': '2027-09-01',
+            'term_3_end_date': '2027-11-30',
+        })
+
+        self.assertRedirects(response, reverse('academics:year_list'))
+        year = AcademicYear.objects.get(name='2027')
+        terms = {
+            term.name: (term.start_date.isoformat(), term.end_date.isoformat())
+            for term in Term.objects.filter(academic_year=year)
+        }
+        self.assertEqual(terms, {
+            'Term 1': ('2027-01-10', '2027-04-15'),
+            'Term 2': ('2027-05-01', '2027-08-15'),
+            'Term 3': ('2027-09-01', '2027-11-30'),
+        })
+
+    def test_academic_year_form_validates_term_date_pairs_and_year_bounds(self):
+        self.login('admin')
+        incomplete = self.client.post(reverse('academics:year_create'), {
+            'name': '2027',
+            'start_date': '2027-01-01',
+            'end_date': '2027-12-31',
+            'term_1_start_date': '2027-01-10',
+            'term_1_end_date': '',
+        })
+        self.assertEqual(incomplete.status_code, 200)
+        self.assertIn('term_1_end_date', incomplete.context['form'].errors)
+
+        outside_year = self.client.post(reverse('academics:year_create'), {
+            'name': '2027',
+            'start_date': '2027-01-01',
+            'end_date': '2027-12-31',
+            'term_1_start_date': '2026-12-20',
+            'term_1_end_date': '2027-01-10',
+        })
+        self.assertEqual(outside_year.status_code, 200)
+        self.assertIn('term_1_start_date', outside_year.context['form'].errors)
+
+    def test_academic_year_edit_prefills_and_updates_term_dates(self):
+        self.login('admin')
+        year = AcademicYear.objects.get(name='2026')
+        term = Term.objects.get(academic_year=year, name=Term.Name.TERM_1)
+        response = self.client.get(reverse('academics:year_update', args=[year.pk]))
+        self.assertEqual(response.context['form']['term_1_start_date'].value(), term.start_date)
+
+        response = self.client.post(
+            reverse('academics:year_update', args=[year.pk]),
+            {
+                'name': year.name,
+                'start_date': year.start_date.isoformat(),
+                'end_date': year.end_date.isoformat(),
+                'term_1_start_date': '2026-02-03',
+                'term_1_end_date': '2026-05-08',
+                'term_2_start_date': '2026-05-25',
+                'term_2_end_date': '2026-08-21',
+                'term_3_start_date': '2026-09-07',
+                'term_3_end_date': '2026-11-27',
+            },
+        )
+
+        self.assertRedirects(response, reverse('academics:year_list'))
+        term.refresh_from_db()
+        self.assertEqual(term.start_date.isoformat(), '2026-02-03')
 
     def test_term_validation_rejects_invalid_dates_and_a_fourth_term(self):
         year = AcademicYear.objects.get(name='2026')

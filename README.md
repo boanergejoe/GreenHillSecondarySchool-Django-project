@@ -84,7 +84,7 @@ python manage.py migrate
 python manage.py seed_demo
 ```
 
-Term 1, Term 2, and Term 3 are fixed choices in the application code, including for fee records; fee term options do not depend on term rows being present in the production database. Academic years, term dates, classes, subjects, student enrollments, and all other records are stored in the database, not in the deployed source files. For hosting, use a persistent production database and keep its connection settings stable; an ephemeral SQLite file may be replaced when the host rebuilds or restarts the application. Do not run `seed_demo` in production unless demo records are wanted.
+Term 1, Term 2, and Term 3 are fixed choices in the application code, including for fee records; fee term options do not depend on term rows being present in the production database. Add or edit an academic year from Academic Calendar to enter that year's three optional term date ranges in the same form. The separate Terms list remains available to manage terms individually. Academic years, term dates, classes, subjects, student enrollments, and all other records are stored in the database, not in the deployed source files. For hosting, use a persistent production database and keep its connection settings stable; an ephemeral SQLite file may be replaced when the host rebuilds or restarts the application. Do not run `seed_demo` in production unless demo records are wanted.
 
 ## Environment Variables
 

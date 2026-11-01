@@ -1,4 +1,5 @@
 from django import forms
+from django.db import transaction
 
 from accounts.forms import BootstrapFormMixin
 from accounts.models import User
@@ -9,6 +10,11 @@ from .models import (
 
 
 DATE_WIDGET = forms.DateInput(attrs={'type': 'date'})
+TERM_DATE_FIELDS = (
+    (Term.Name.TERM_1, 'term_1_start_date', 'term_1_end_date'),
+    (Term.Name.TERM_2, 'term_2_start_date', 'term_2_end_date'),
+    (Term.Name.TERM_3, 'term_3_start_date', 'term_3_end_date'),
+)
 
 
 class DepartmentForm(BootstrapFormMixin, forms.ModelForm):
@@ -24,12 +30,102 @@ class AcademicYearForm(BootstrapFormMixin, forms.ModelForm):
         fields = ['name', 'start_date', 'end_date', 'is_current']
         widgets = {'start_date': DATE_WIDGET, 'end_date': DATE_WIDGET}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for term_name, start_field, end_field in TERM_DATE_FIELDS:
+            label = term_name
+            self.fields[start_field] = forms.DateField(
+                label=f'{label} start date',
+                required=False,
+                widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+                help_text='Leave both dates blank to leave this term unchanged.',
+            )
+            self.fields[end_field] = forms.DateField(
+                label=f'{label} end date',
+                required=False,
+                widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            )
+
+        existing_terms = {}
+        if self.instance.pk:
+            existing_terms = {
+                term.name: term
+                for term in Term.objects.filter(academic_year=self.instance)
+            }
+        for term_name, start_field, end_field in TERM_DATE_FIELDS:
+            term = existing_terms.get(term_name)
+            if term:
+                self.initial[start_field] = term.start_date
+                self.initial[end_field] = term.end_date
+
+        self.order_fields([
+            'name', 'start_date', 'end_date',
+            *(field for _, start, end in TERM_DATE_FIELDS for field in (start, end)),
+            'is_current',
+        ])
+
     def clean(self):
         cleaned = super().clean()
         start, end = cleaned.get('start_date'), cleaned.get('end_date')
         if start and end and end <= start:
-            raise forms.ValidationError('End date must be after the start date.')
+            self.add_error('end_date', 'End date must be after the start date.')
+
+        term_ranges = []
+        for _, start_field, end_field in TERM_DATE_FIELDS:
+            term_start = cleaned.get(start_field)
+            term_end = cleaned.get(end_field)
+            if bool(term_start) != bool(term_end):
+                missing_field = end_field if term_start else start_field
+                self.add_error(
+                    missing_field,
+                    'Enter both the start and end dates for this term.',
+                )
+                continue
+            if not term_start:
+                continue
+            if term_end <= term_start:
+                self.add_error(end_field, 'End date must be after the start date.')
+                continue
+            if start and term_start < start:
+                self.add_error(
+                    start_field,
+                    'Term start date must fall within the academic year.',
+                )
+            if end and term_end > end:
+                self.add_error(
+                    end_field,
+                    'Term end date must fall within the academic year.',
+                )
+            term_ranges.append((term_start, term_end, start_field))
+
+        term_ranges.sort()
+        for previous, current in zip(term_ranges, term_ranges[1:]):
+            if current[0] <= previous[1]:
+                self.add_error(
+                    current[2],
+                    'Term date ranges must not overlap.',
+                )
         return cleaned
+
+    @transaction.atomic
+    def save(self, commit=True):
+        academic_year = super().save(commit=False)
+        if commit:
+            academic_year.save()
+            self.save_m2m()
+            for term_name, start_field, end_field in TERM_DATE_FIELDS:
+                start_date = self.cleaned_data.get(start_field)
+                end_date = self.cleaned_data.get(end_field)
+                if start_date and end_date:
+                    Term.objects.update_or_create(
+                        academic_year=academic_year,
+                        name=term_name,
+                        defaults={
+                            'start_date': start_date,
+                            'end_date': end_date,
+                        },
+                    )
+        return academic_year
 
 
 class TermForm(BootstrapFormMixin, forms.ModelForm):

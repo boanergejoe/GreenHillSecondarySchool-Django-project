@@ -58,6 +58,11 @@ class AcademicYearListView(BaseListView):
     delete_url_name = 'academics:year_delete'
     create_label = 'Add Academic Year'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['term_list_url'] = reverse_lazy('academics:term_list')
+        return context
+
 
 class AcademicYearCreateView(BaseCreateView):
     model = AcademicYear
@@ -65,6 +70,14 @@ class AcademicYearCreateView(BaseCreateView):
     page_title = 'Add Academic Year'
     success_url = reverse_lazy('academics:year_list')
     cancel_url_name = 'academics:year_list'
+    required_field_exclusions = tuple(
+        field
+        for term_index in range(1, 4)
+        for field in (
+            f'term_{term_index}_start_date',
+            f'term_{term_index}_end_date',
+        )
+    )
 
 
 class AcademicYearUpdateView(BaseUpdateView):
