@@ -39,11 +39,11 @@ class ExaminationListView(BaseListView):
     model = Examination
     page_title = 'Examinations'
     allowed_roles = ('teacher', 'accountant')
-    search_fields = ['name', 'academic_year__name', 'school_class__name']
+    search_fields = ['name', 'academic_year__name', 'school_classes__name']
     columns = [
         ('Examination', 'name'), ('Type', 'get_exam_type_display'),
         ('Academic Year', 'academic_year.name'), ('Term', 'get_term_display'),
-        ('Class', 'school_class.name'),
+        ('Classes', 'school_class_names'),
         ('Start', 'start_date'), ('End', 'end_date'), ('Published', 'is_published'),
     ]
     create_url_name = 'examinations:exam_create'
@@ -53,11 +53,13 @@ class ExaminationListView(BaseListView):
     create_label = 'Create Examination'
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related(
+            'academic_year'
+        ).prefetch_related('school_classes')
         if self.request.user.role == 'teacher':
             qs = qs.filter(
-                Q(school_class_id__in=teacher_class_ids(self.request.user))
-                | Q(school_class__isnull=True)
+                Q(school_classes__in=teacher_class_ids(self.request.user))
+                | Q(school_classes__isnull=True)
             ).distinct()
         return qs
 
@@ -66,6 +68,7 @@ class ExaminationCreateView(BaseCreateView):
     model = Examination
     form_class = ExaminationForm
     page_title = 'Create Examination'
+    required_field_exclusions = ('school_classes',)
     success_url = reverse_lazy('examinations:exam_list')
     cancel_url_name = 'examinations:exam_list'
     success_message = 'Examination created successfully.'
@@ -90,12 +93,16 @@ class ExaminationDeleteView(BaseDeleteView):
 @login_required
 def exam_detail(request, pk):
     exam = get_object_or_404(
-        Examination.objects.select_related('academic_year', 'school_class'), pk=pk
+        Examination.objects.select_related('academic_year').prefetch_related(
+            'school_classes'
+        ), pk=pk
     )
     if (
         request.user.role == 'teacher'
-        and exam.school_class_id
-        and not teacher_classes(request.user).filter(pk=exam.school_class_id).exists()
+        and exam.school_classes.exists()
+        and not exam.school_classes.filter(
+            pk__in=teacher_class_ids(request.user)
+        ).exists()
     ):
         raise PermissionDenied('You cannot view this examination.')
     if request.user.role in ('student', 'parent') and not exam.is_published:
@@ -104,8 +111,8 @@ def exam_detail(request, pk):
     subjects = Subject.objects.filter(
         academic_year=exam.academic_year
     ).prefetch_related('school_classes')
-    if exam.school_class_id:
-        subjects = subjects.filter(school_classes=exam.school_class)
+    if exam.school_classes.exists():
+        subjects = subjects.filter(school_classes__in=exam.school_classes.all()).distinct()
     if request.user.role == 'student':
         subjects = subjects.filter(
             results__student__user=request.user,
@@ -151,8 +158,9 @@ def enter_results(request, pk):
     subjects = Subject.objects.filter(
         academic_year=exam.academic_year
     ).prefetch_related('school_classes')
-    if exam.school_class_id:
-        subjects = subjects.filter(school_classes=exam.school_class)
+    exam_classes = exam.school_classes.all()
+    if exam_classes.exists():
+        subjects = subjects.filter(school_classes__in=exam_classes).distinct()
     if request.user.role == 'teacher':
         subjects = subjects.filter(
             Q(teacher=request.user)
@@ -168,8 +176,8 @@ def enter_results(request, pk):
             school_class__in=subject.school_classes.all(),
             status=Student.Status.ACTIVE,
         ).select_related('user').order_by('user__first_name', 'user__last_name')
-        if exam.school_class_id:
-            students = students.filter(school_class_id=exam.school_class_id)
+        if exam_classes.exists():
+            students = students.filter(school_class__in=exam_classes)
 
     if request.method == 'POST' and subject:
         saved = 0
@@ -266,7 +274,7 @@ def result_list(request):
             'school_classes'
         ).order_by('name')
         examinations = Examination.objects.filter(
-            Q(school_class__in=classes) | Q(school_class__isnull=True)
+            Q(school_classes__in=classes) | Q(school_classes__isnull=True)
         ).select_related('academic_year').distinct()
     elif user.role in ('student', 'parent'):
         examinations = examinations.filter(is_published=True)

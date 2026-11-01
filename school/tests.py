@@ -138,7 +138,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_student_can_access_own_records(self):
         user = self.login('student1')
         student = user.student_profile
-        exam = Examination.objects.filter(school_class=student.school_class).first()
+        exam = Examination.objects.filter(school_classes=student.school_class).first()
         assignment = Assignment.objects.filter(
             subject__school_classes=student.school_class
         ).first()
@@ -170,7 +170,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         user = self.login('parent1')
         parent = user.parent_profile
         student = parent.children.select_related('school_class').first()
-        exam = Examination.objects.filter(school_class=student.school_class).first()
+        exam = Examination.objects.filter(school_classes=student.school_class).first()
         assignment = Assignment.objects.filter(
             subject__school_classes=student.school_class
         ).first()
@@ -289,13 +289,16 @@ class GreenHillSecondaryIntegrationTests(TestCase):
 
     def test_results_are_hidden_until_teacher_entry_is_published(self):
         teacher = self.login('teacher1')
-        school_class = Examination.objects.filter(
-            school_class__in=teacher_classes(teacher)
-        ).values_list('school_class_id', flat=True).first()
+        exam = Examination.objects.filter(
+            school_classes__in=teacher_classes(teacher)
+        ).first()
+        self.assertIsNotNone(exam)
+        school_class = exam.school_classes.filter(
+            pk__in=teacher_classes(teacher)
+        ).first()
         self.assertIsNotNone(school_class)
-        exam = Examination.objects.filter(school_class_id=school_class).first()
         student = Student.objects.filter(
-            school_class_id=school_class,
+            school_class=school_class,
             parent__isnull=False,
             status=Student.Status.ACTIVE,
         ).select_related('parent__user').first()
@@ -340,7 +343,9 @@ class GreenHillSecondaryIntegrationTests(TestCase):
                 'exam_type': exam.exam_type,
                 'academic_year': exam.academic_year_id,
                 'term': exam.term,
-                'school_class': exam.school_class_id,
+                'school_classes': list(
+                    exam.school_classes.values_list('pk', flat=True)
+                ),
                 'start_date': exam.start_date.isoformat(),
                 'end_date': exam.end_date.isoformat(),
                 'total_marks': exam.total_marks,
@@ -665,6 +670,10 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             expected,
         )
         self.assertEqual(list(student_form.fields['term'].choices), expected)
+        self.assertIsInstance(
+            examination_form.fields['school_classes'].widget,
+            forms.CheckboxSelectMultiple,
+        )
         self.assertEqual(
             [
                 choice for choice in examination_form.fields['term'].choices
@@ -695,11 +704,15 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_examination_term_choices_work_without_database_term_rows(self):
         self.login('admin')
         year = AcademicYear.objects.get(name='2026')
-        school_class = SchoolClass.objects.filter(academic_year=year).first()
+        school_classes = list(
+            SchoolClass.objects.filter(academic_year=year)[:2]
+        )
+        self.assertEqual(len(school_classes), 2)
         Term.objects.filter(academic_year=year).delete()
 
         response = self.client.get(reverse('examinations:exam_create'))
         self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['form'].fields['school_classes'].required)
         term_choices = [
             choice for choice in response.context['form'].fields['term'].choices
             if choice[0]
@@ -717,7 +730,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             'exam_type': Examination.ExamType.FINAL,
             'academic_year': year.pk,
             'term': Term.Name.TERM_3,
-            'school_class': school_class.pk,
+            'school_classes': [item.pk for item in school_classes],
             'start_date': '2026-10-12',
             'end_date': '2026-10-20',
             'total_marks': 100,
@@ -726,6 +739,9 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertRedirects(response, reverse('examinations:exam_list'))
         exam = Examination.objects.get(name='Term 3 Exams Without Calendar Rows')
         self.assertEqual(exam.term, Term.Name.TERM_3)
+        self.assertSetEqual(
+            set(exam.school_classes.all()), set(school_classes)
+        )
 
     def test_student_portal_displays_class_and_department(self):
         user = self.login('student1')
@@ -1021,7 +1037,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_student_can_download_own_report_card_only(self):
         user = self.login('student1')
         student = user.student_profile
-        exam = Examination.objects.filter(school_class=student.school_class).first()
+        exam = Examination.objects.filter(school_classes=student.school_class).first()
         other = Student.objects.exclude(pk=student.pk).first()
 
         response = self.client.get(
@@ -1038,7 +1054,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_student_dashboard_lists_report_card_downloads(self):
         user = self.login('student1')
         student = user.student_profile
-        exam = Examination.objects.filter(school_class=student.school_class).first()
+        exam = Examination.objects.filter(school_classes=student.school_class).first()
         response = self.client.get(reverse('accounts:dashboard'))
         self.assertContains(response, 'My Report Cards')
         self.assertContains(

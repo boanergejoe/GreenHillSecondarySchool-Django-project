@@ -411,7 +411,6 @@ class Command(BaseCommand):
         exam, _ = Examination.objects.update_or_create(
             name='Term 1 Midterm Examination',
             academic_year=year,
-            school_class=classes[0],
             defaults={
                 'exam_type': Examination.ExamType.MIDTERM,
                 'term': current_term.name,
@@ -421,6 +420,7 @@ class Command(BaseCommand):
                 'is_published': True,
             },
         )
+        exam.school_classes.set([classes[0]])
         result_marks = [88, 76, 69, 81, 74, 63, 90]
         for student_index, student in enumerate(
             Student.objects.filter(school_class=classes[0]).order_by('student_id')

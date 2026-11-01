@@ -24,9 +24,9 @@ class Examination(models.Model):
     term = models.CharField(
         max_length=50, choices=Term.Name.choices, blank=True, default=''
     )
-    school_class = models.ForeignKey(
-        'academics.SchoolClass', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='examinations',
+    school_classes = models.ManyToManyField(
+        'academics.SchoolClass', blank=True, related_name='examinations',
+        help_text='Select the classes sitting this examination. Leave blank for all classes.',
     )
     start_date = models.DateField()
     end_date = models.DateField()
@@ -44,13 +44,13 @@ class Examination(models.Model):
         errors = {}
         if self.start_date and self.end_date and self.end_date < self.start_date:
             errors['end_date'] = 'End date cannot be before the start date.'
-        if (
-            self.academic_year_id and self.school_class_id
-            and self.school_class.academic_year_id != self.academic_year_id
-        ):
-            errors['school_class'] = 'The class must belong to the selected academic year.'
         if errors:
             raise ValidationError(errors)
+
+    @property
+    def school_class_names(self):
+        names = [school_class.name for school_class in self.school_classes.all()]
+        return ', '.join(names) if names else 'All classes'
 
     def get_absolute_url(self):
         return reverse('examinations:exam_detail', args=[self.pk])

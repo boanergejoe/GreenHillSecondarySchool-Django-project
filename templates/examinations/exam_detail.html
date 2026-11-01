@@ -15,7 +15,7 @@
 </div>
 
 <div class="row g-3 mb-3">
-    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Class</small><strong>{{ exam.school_class.name|default:"All classes" }}</strong></div></div>
+    <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Classes</small><strong>{{ exam.school_class_names }}</strong></div></div>
     <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Start Date</small><strong>{{ exam.start_date|date:"d M Y" }}</strong></div></div>
     <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">End Date</small><strong>{{ exam.end_date|date:"d M Y" }}</strong></div></div>
     <div class="col-md-3"><div class="card p-3"><small class="text-muted d-block">Results Recorded</small><strong>{{ result_count }}</strong></div></div>

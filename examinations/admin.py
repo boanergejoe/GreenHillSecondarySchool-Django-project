@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import ExaminationForm
 from .models import Examination, Result
 
 
@@ -10,11 +11,12 @@ class ResultInline(admin.TabularInline):
 
 @admin.register(Examination)
 class ExaminationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'exam_type', 'academic_year', 'term', 'school_class', 'start_date', 'end_date', 'is_published')
-    list_filter = ('exam_type', 'academic_year', 'term', 'school_class', 'is_published')
-    search_fields = ('name', 'school_class__name')
-    autocomplete_fields = ('academic_year', 'school_class')
-    list_select_related = ('academic_year', 'school_class')
+    form = ExaminationForm
+    list_display = ('name', 'exam_type', 'academic_year', 'term', 'school_class_names', 'start_date', 'end_date', 'is_published')
+    list_filter = ('exam_type', 'academic_year', 'term', 'school_classes', 'is_published')
+    search_fields = ('name', 'school_classes__name')
+    autocomplete_fields = ('academic_year',)
+    list_select_related = ('academic_year',)
     date_hierarchy = 'start_date'
     inlines = [ResultInline]
 

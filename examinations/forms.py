@@ -9,11 +9,23 @@ from .models import Examination, Result
 DATE_WIDGET = forms.DateInput(attrs={'type': 'date'})
 
 
+class SchoolClassChoiceField(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return f'{obj.name} ({obj.academic_year.name})'
+
+
 class ExaminationForm(BootstrapFormMixin, forms.ModelForm):
+    school_classes = SchoolClassChoiceField(
+        queryset=SchoolClass.objects.select_related('academic_year'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(),
+        help_text='Select the classes sitting this examination. Leave blank for all classes.',
+    )
+
     class Meta:
         model = Examination
         fields = [
-            'name', 'exam_type', 'academic_year', 'term', 'school_class',
+            'name', 'exam_type', 'academic_year', 'term', 'school_classes',
             'start_date', 'end_date', 'total_marks', 'is_published',
         ]
         widgets = {
@@ -26,11 +38,19 @@ class ExaminationForm(BootstrapFormMixin, forms.ModelForm):
         cleaned = super().clean()
         start, end = cleaned.get('start_date'), cleaned.get('end_date')
         academic_year = cleaned.get('academic_year')
-        school_class = cleaned.get('school_class')
         if start and end and end < start:
             raise forms.ValidationError('End date cannot be before the start date.')
-        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
-            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        school_classes = cleaned.get('school_classes')
+        if academic_year and school_classes:
+            invalid_classes = [
+                school_class for school_class in school_classes
+                if school_class.academic_year_id != academic_year.pk
+            ]
+            if invalid_classes:
+                self.add_error(
+                    'school_classes',
+                    'All selected classes must belong to the selected academic year.',
+                )
         return cleaned
 
 

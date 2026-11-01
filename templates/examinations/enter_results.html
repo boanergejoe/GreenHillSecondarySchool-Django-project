@@ -17,7 +17,7 @@
                 <label class="form-label">Subject</label>
                 <select name="subject" class="form-select" required>
                     <option value="">Select subject</option>
-                    {% for item in subjects %}<option value="{{ item.pk }}" {% if selected_subject == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }} - {{ item.school_class.name }}</option>{% endfor %}
+                    {% for item in subjects %}<option value="{{ item.pk }}" {% if selected_subject == item.pk|stringformat:'s' %}selected{% endif %}>{{ item.name }} - {{ item.school_class_names }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-md-3 d-grid"><button class="btn btn-navy"><i class="bi bi-arrow-repeat me-1"></i>Load Students</button></div>
