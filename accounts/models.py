@@ -9,6 +9,7 @@ class User(AbstractUser):
         STUDENT = 'student', 'Student'
         PARENT = 'parent', 'Parent / Guardian'
         ACCOUNTANT = 'accountant', 'Accountant'
+        REGISTRAR = 'registrar', 'Registrar'
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     phone = models.CharField(max_length=30, blank=True)

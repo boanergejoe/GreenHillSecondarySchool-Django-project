@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Generate a Quiz{% endblock %}
+{% block page_heading %}Generate a Quiz{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Generate a multiple-choice quiz</h3><p>Choose an assigned subject and topic. Generated questions are always saved as a draft for review.</p></div>
+    <a href="{% url 'assignments:quiz_list' %}" class="btn btn-outline-secondary">Back to quizzes</a>
+</div>
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-info">
+            AI-generated content can be inaccurate. Review every question and answer before publishing.
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-stars me-1"></i>Generate draft</button>
+                <a href="{% url 'assignments:quiz_list' %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

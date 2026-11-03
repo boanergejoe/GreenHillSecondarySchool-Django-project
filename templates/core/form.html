@@ -28,7 +28,8 @@
                         <p class="text-muted mb-0">Add the date range for each term in this academic year. Enter both dates for a term, or leave both blank. You can edit or remove terms later from the terms list.</p>
                     </div>
                     {% endif %}
-                    <div class="{% if field.field.widget.input_type == 'textarea' or field.name in 'address,description,message,bio,remarks,medical_notes,feedback,comment' %}full{% endif %}">
+                    <div class="{% if field.field.widget.input_type == 'textarea' or field.name in 'address,description,message,bio,remarks,medical_notes,feedback,comment' %}full{% endif %}"
+                         {% if field.name == 'department' %}data-department-field{% endif %}>
                         {% if field.field.widget.allow_multiple_selected or field.field.widget.input_type == 'radio' %}
                             <label class="form-label" for="{{ field.id_for_label }}">
                                 {{ field.label }}{% if field.field.required %}<span class="required-star">*</span>{% endif %}
@@ -50,6 +51,10 @@
                     </div>
                 {% endfor %}
             </div>
+            {% if payment_auto_fill_data %}
+                {{ payment_auto_fill_data|json_script:"payment-auto-fill-data" }}
+                <div id="payment-student-summary" class="alert alert-info mt-3" role="status" hidden></div>
+            {% endif %}
             <div class="form-actions">
                 {% if cancel_url %}<a href="{{ cancel_url }}" class="btn btn-outline-secondary">Cancel</a>{% endif %}
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Save</button>
@@ -57,4 +62,82 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if payment_auto_fill_data %}
+<script>
+(() => {
+    const dataElement = document.getElementById('payment-auto-fill-data');
+    const studentField = document.getElementById('id_student');
+    const feeField = document.getElementById('id_fee');
+    const amountField = document.getElementById('id_amount');
+    const summary = document.getElementById('payment-student-summary');
+    if (!dataElement || !studentField || !feeField || !amountField || !summary) return;
+
+    const studentFees = JSON.parse(dataElement.textContent);
+    const updateStudentFees = (preserveCurrentValues = false) => {
+        const selected = studentFees[studentField.value];
+        const selectedFeeId = feeField.value;
+        const currentAmount = amountField.value;
+        feeField.replaceChildren(new Option('Select fee', ''));
+        if (!selected) {
+            summary.hidden = true;
+            amountField.value = '';
+            return;
+        }
+
+        const feeChoices = selected.fees || [];
+        for (const fee of feeChoices) {
+            const term = fee.term ? ` · ${fee.term}` : '';
+            feeField.add(new Option(`${fee.name}${term} — balance ${fee.amount}`, fee.id));
+        }
+        const currentFee = preserveCurrentValues
+            ? feeChoices.find((fee) => String(fee.id) === selectedFeeId)
+            : null;
+        const chosenFee = currentFee || feeChoices.find((fee) => Number(fee.amount) > 0);
+        if (chosenFee) {
+            feeField.value = String(chosenFee.id);
+            amountField.value = currentFee && currentAmount ? currentAmount : chosenFee.amount;
+            summary.textContent = `Class: ${selected.class_name || 'Not assigned'} · Academic year: ${selected.academic_year || 'Not set'} · Selected fee balance: ${chosenFee.amount}${chosenFee.due_date ? ` · Due ${chosenFee.due_date}` : ''}. Amount can be adjusted for a part payment.`;
+        } else {
+            amountField.value = '';
+            summary.textContent = `Class: ${selected.class_name || 'Not assigned'} · Academic year: ${selected.academic_year || 'Not set'} · No active fee balance is configured for this student.`;
+        }
+        summary.hidden = false;
+    };
+
+    studentField.addEventListener('change', updateStudentFees);
+    feeField.addEventListener('change', () => {
+        const selected = studentFees[studentField.value];
+        const fee = selected?.fees.find((item) => String(item.id) === feeField.value);
+        if (fee) amountField.value = fee.amount;
+    });
+    updateStudentFees(true);
+})();
+</script>
+{% endif %}
+{% if form.fields.school_class and form.fields.department %}
+<script>
+(() => {
+    const classField = document.getElementById('id_school_class');
+    const departmentField = document.getElementById('id_department');
+    const departmentWrapper = document.querySelector('[data-department-field]');
+    if (!classField || !departmentField || !departmentWrapper) return;
+
+    const updateDepartmentField = () => {
+        const level = classField.selectedOptions[0]?.dataset.level || '';
+        const neutral = level === 'Senior 1' || level === 'Senior 2';
+        departmentWrapper.hidden = neutral;
+        departmentField.disabled = neutral;
+        departmentField.required = Boolean(level) && !neutral;
+        departmentField.setAttribute('aria-required', String(Boolean(level) && !neutral));
+        if (neutral) departmentField.value = '';
+    };
+    classField.addEventListener('change', updateDepartmentField);
+    updateDepartmentField();
+})();
+</script>
+{% endif %}
 {% endblock %}

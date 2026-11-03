@@ -98,13 +98,15 @@ def reports_index(request):
         classes = teacher_classes(request.user)
         context.update({
             'is_teacher': True,
-            'student_count': Student.objects.filter(school_class__in=classes).count(),
+            'student_count': Student.objects.filter(
+                school_class__in=classes, is_archived=False
+            ).count(),
             'class_count': classes.count(),
             'subject_count': teacher_subjects(request.user).count(),
         })
     else:
         context.update({
-            'student_count': Student.objects.count(),
+            'student_count': Student.objects.filter(is_archived=False).count(),
             'teacher_count': Teacher.objects.count(),
             'class_count': SchoolClass.objects.count(),
             'payment_total': Payment.objects.aggregate(total=Sum('amount'))['total'] or 0,
@@ -114,7 +116,9 @@ def reports_index(request):
 
 @role_required('accountant')
 def export_students(request, fmt):
-    students = Student.objects.select_related('user', 'school_class', 'department')
+    students = Student.objects.filter(is_archived=False).select_related(
+        'user', 'school_class', 'department'
+    )
     class_id = request.GET.get('school_class', '')
     if class_id:
         students = students.filter(school_class_id=class_id)

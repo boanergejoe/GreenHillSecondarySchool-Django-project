@@ -10,7 +10,9 @@ admin.site.site_title = 'Green Hill School Admin'
 admin.site.index_title = 'School Management'
 
 urlpatterns = [
+    path('i18n/', include('django.conf.urls.i18n')),
     path('', school_views.home, name='home'),
+    path('school-assistant/', school_views.school_assistant, name='school_assistant'),
     path('privacy/', school_views.privacy_policy, name='privacy_policy'),
     path('terms/', school_views.terms_of_service, name='terms_of_service'),
     path('cookies/', school_views.cookie_policy, name='cookie_policy'),

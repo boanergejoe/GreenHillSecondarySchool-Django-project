@@ -4,9 +4,13 @@ Django settings for the Green Hill Secondary School management system.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 from django.core.exceptions import ImproperlyConfigured
 
+load_dotenv()
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -47,7 +51,7 @@ SCHOOL_LOCATION = 'Gudele South, Juba, South Sudan'
 SCHOOL_ADDRESS = (
     'Central Equatoria State, P.O. Box 405, Gudele South, Juba, South Sudan'
 )
-SCHOOL_MOTTO = 'Knowledge, Integrity, Excellence'
+SCHOOL_MOTTO = 'Nobility, Honor, Excellence'
 SCHOOL_EMAIL = 'info@greenhillss.edu.ss'
 SCHOOL_PHONE = '+211 911 743 302 / +211 923 580 596'
 SCHOOL_PHONE_PRIMARY = '+211 911 743 302'
@@ -77,6 +81,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -137,7 +142,13 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
+LANGUAGES = [
+    ('en', 'English'),
+    ('fr', 'Français'),
+    ('ar', 'العربية'),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
 TIME_ZONE = 'Africa/Juba'
 USE_I18N = True
 USE_TZ = True

@@ -15,9 +15,9 @@ class EnrollmentInline(admin.TabularInline):
 class StudentAdmin(admin.ModelAdmin):
     list_display = (
         'student_id', 'user', 'school_class', 'department', 'gender', 'status',
-        'admission_date',
+        'admission_date', 'is_archived',
     )
-    list_filter = ('status', 'gender', 'school_class', 'department')
+    list_filter = ('is_archived', 'status', 'gender', 'school_class', 'department')
     search_fields = (
         'student_id', 'user__first_name', 'user__last_name', 'user__email',
         'department__name',
@@ -27,6 +27,30 @@ class StudentAdmin(admin.ModelAdmin):
     date_hierarchy = 'admission_date'
     list_per_page = 25
     inlines = [EnrollmentInline]
+    actions = ('archive_selected_students', 'restore_selected_students')
+
+    @admin.action(description='Archive selected students')
+    def archive_selected_students(self, request, queryset):
+        from .services import archive_student
+
+        count = 0
+        for student in queryset:
+            archive_student(student, request.user)
+            count += 1
+        self.message_user(request, f'{count} student record(s) archived.')
+
+    @admin.action(description='Restore selected students')
+    def restore_selected_students(self, request, queryset):
+        from .services import restore_student
+
+        count = 0
+        for student in queryset:
+            restore_student(student)
+            count += 1
+        self.message_user(request, f'{count} student record(s) restored.')
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Parent)

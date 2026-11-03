@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+{% block page_heading %}Quiz{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ quiz.title }}</h3><p>{{ quiz.subject.name }} · {{ quiz.subject.school_class_names }}</p></div>
+    <a href="{% url 'assignments:quiz_list' %}" class="btn btn-outline-secondary">Back to quizzes</a>
+</div>
+<div class="card mb-3">
+    <div class="card-body">
+        <p>{{ quiz.description|default:"Multiple-choice assessment."|linebreaksbr }}</p>
+        <div class="d-flex flex-wrap gap-3 text-muted small">
+            <span>{{ questions|length }} questions</span>
+            <span>Created by {{ quiz.created_by.display_name }}</span>
+            {% if can_manage %}<span>{% if quiz.is_published %}Published{% else %}Draft{% endif %}</span>{% endif %}
+        </div>
+            {% if can_manage and not quiz.is_published and questions %}
+            <form method="post" action="{% url 'assignments:quiz_publish' quiz.pk %}" class="mt-3">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">Publish after review</button>
+            </form>
+            {% endif %}
+        {% if attempt %}
+        <div class="alert alert-success mt-3 mb-0" role="status">
+            Completed: {{ attempt.score }} / {{ attempt.total_questions }} correct.
+            Submitted {{ attempt.submitted_at|date:"d M Y H:i" }}.
+        </div>
+        {% elif is_student and quiz.is_published %}
+        <a href="{% url 'assignments:quiz_attempt' quiz.pk %}" class="btn btn-primary mt-3">Start quiz</a>
+        {% endif %}
+    </div>
+</div>
+{% if can_manage %}
+<div class="card">
+    <div class="card-header"><h6>Question review</h6></div>
+    <ol class="list-group list-group-numbered list-group-flush">
+        {% for question in questions %}
+        <li class="list-group-item">
+            <div class="fw-semibold">{{ question.prompt }}</div>
+            <ol type="A" class="mt-2">
+                {% for option in question.options %}
+                <li>{{ option }}{% if forloop.counter0 == question.correct_option %} <span class="badge bg-success">Answer</span>{% endif %}</li>
+                {% endfor %}
+            </ol>
+        </li>
+        {% empty %}
+        <li class="list-group-item text-muted">This quiz has no questions.</li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %}
+{% endblock %}

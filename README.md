@@ -4,7 +4,7 @@ A Django-based college and high school management system for **Green Hill Second
 
 ## Features
 
-- Role-based authentication and dashboards for administrators, teachers, students, parents, and accountants.
+- Role-based authentication and dashboards for administrators, registrars, teachers, students, parents, and accountants.
 - Student registration with independent class and department assignments, parent/guardian records, automatic student IDs, student promotion, and profile pages.
 - Teacher records with required multi-class teaching assignments, departments, staff accounts, and role assignment.
 - Academic years with three fixed term names, streamed Senior 3/4 classes, subjects, and student enrollments across selected terms.
@@ -13,7 +13,10 @@ A Django-based college and high school management system for **Green Hill Second
 - Attendance capture, filtering, summaries, and reporting.
 - Examinations, result entry, result lists, report cards, and PDF report cards.
 - Fee structures, payments, receipts, fee statements, and financial overview.
-- Assignments, student submissions, and teacher review/grading.
+- Assignments, student submissions, teacher review/grading, AI-assisted score suggestions requiring teacher approval, and objective multiple-choice quizzes with automatic grading.
+- A public school-information assistant that answers from published school details and announcements.
+- Student record archiving/restoration and Registrar-reviewed student re-admission requests with the original student ID and enrollment history retained.
+- Persistent light/dark theme preference and English/French/Arabic language selection, with translated public-page content and shared portal navigation; user-authored announcements remain in their original language.
 - Announcements and user notifications; published announcements can be explicitly marked for the public homepage.
 - Excel and PDF exports for students, teachers, attendance, results, and finance.
 - Responsive Bootstrap 5 interface with dashboards and charts.
@@ -50,15 +53,20 @@ Open `http://127.0.0.1:8000/` for the public school homepage, then use **Portal 
 
 The local `db.sqlite3` is excluded from Git. Run both `migrate` and `seed_demo` to create it and populate the demo data; both commands are safe to run again.
 
+For staff workflows, account setup, deployment, and troubleshooting, see the [User and Technical Guide](docs/USER_AND_TECHNICAL_GUIDE.md).
+
 ## Demo Accounts
 
 | Role | Username | Password |
 | --- | --- | --- |
 | Administrator | `admin` | `Admin@12345` |
 | Accountant | `accountant` | `Account@12345` |
+| Registrar | `registrar` | `Registrar@12345` |
 | Teacher | `teacher1` | `Teacher@12345` |
 | Student | `student1` | `Student@12345` |
 | Parent | `parent1` | `Parent@12345` |
+
+These credentials are for local/demo testing only. `seed_demo` resets these demo passwords when rerun; never run it on a live school database or use these credentials in production. Create a separate Registrar account with a unique password for the hosted site.
 
 Additional seeded teachers include `teacher2`, `teacher3`, and `teacher4`. Additional seeded students and parents are also available for testing role-based access.
 
@@ -104,6 +112,8 @@ Term 1, Term 2, and Term 3 are fixed application choices for fees, subjects, enr
 | `DJANGO_EMAIL_HOST_USER` | empty | SMTP username |
 | `DJANGO_EMAIL_HOST_PASSWORD` | empty | SMTP password |
 | `DJANGO_DEFAULT_FROM_EMAIL` | School email | Default sender address |
+| `OPENAI_API_KEY` | empty | Optional; enables quiz generation, AI grading suggestions, and the public information assistant |
+| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI chat-completions model used by AI features |
 | `DB_ENGINE` | `sqlite` | Set to `mysql` for MySQL |
 | `DB_NAME` | `greenhill_school` | MySQL database name |
 | `DB_USER` | `root` | MySQL user |
@@ -204,6 +214,7 @@ In the PythonAnywhere **Web** tab:
 - Set the source directory to `/home/YOUR_USERNAME/greenhill`.
 - Set the virtualenv to `/home/YOUR_USERNAME/.virtualenvs/greenhill-venv`.
 - Use the WSGI configuration above.
+- If enabling AI features, configure a newly generated `OPENAI_API_KEY` as a private host environment variable; never put it in Git, a template, or a public settings file. AI grading is advisory and must be approved by a teacher. The public assistant receives only the visitor's question and approved public school content.
 - Add static mapping `/static/` to `/home/YOUR_USERNAME/greenhill/staticfiles`.
 - Add media mapping `/media/` to `/home/YOUR_USERNAME/greenhill/media`.
 - Enable HTTPS for the site, then reload it.
@@ -243,4 +254,5 @@ Then click **Reload** in the PythonAnywhere Web tab. The Django admin is availab
 - Set `DJANGO_SECURE_HSTS_SECONDS=0` until HTTPS is confirmed stable, then enable a long HSTS lifetime.
 - Review and customize the public legal policies with the school's approved wording before production use.
 - Change all demo passwords before real use.
+- If an AI key was ever pasted into a message, repository, or other shared location, revoke it and configure a fresh key in the host environment.
 - Back up the production database and uploaded media regularly.

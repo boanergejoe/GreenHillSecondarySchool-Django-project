@@ -175,6 +175,7 @@ def enter_results(request, pk):
         students = Student.objects.filter(
             school_class__in=subject.school_classes.all(),
             status=Student.Status.ACTIVE,
+            is_archived=False,
         ).select_related('user').order_by('user__first_name', 'user__last_name')
         if exam_classes.exists():
             students = students.filter(school_class__in=exam_classes)

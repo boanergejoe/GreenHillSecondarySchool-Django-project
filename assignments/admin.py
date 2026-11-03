@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Assignment, Submission
+from .models import Assignment, Quiz, QuizAttempt, QuizQuestion, Submission
 
 
 class SubmissionInline(admin.TabularInline):
@@ -27,3 +27,27 @@ class SubmissionAdmin(admin.ModelAdmin):
     autocomplete_fields = ('assignment', 'student', 'reviewed_by')
     list_select_related = ('assignment', 'student__user', 'reviewed_by')
     list_per_page = 25
+
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    list_display = ('title', 'subject', 'created_by', 'is_published', 'created_at')
+    list_filter = ('is_published', 'subject__school_classes')
+    search_fields = ('title', 'subject__name')
+    autocomplete_fields = ('subject', 'created_by')
+    list_select_related = ('subject', 'created_by')
+
+
+@admin.register(QuizQuestion)
+class QuizQuestionAdmin(admin.ModelAdmin):
+    list_display = ('quiz', 'position', 'prompt', 'correct_option')
+    search_fields = ('quiz__title', 'prompt')
+    autocomplete_fields = ('quiz',)
+
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display = ('quiz', 'student', 'score', 'submitted_at')
+    list_filter = ('quiz',)
+    search_fields = ('quiz__title', 'student__student_id', 'student__user__first_name')
+    autocomplete_fields = ('quiz', 'student')

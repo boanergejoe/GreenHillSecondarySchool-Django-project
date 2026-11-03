@@ -129,7 +129,7 @@ class SchoolClass(models.Model):
 
     @property
     def student_count(self):
-        return self.students.filter(status='active').count()
+        return self.students.filter(status='active', is_archived=False).count()
 
     def clean(self):
         errors = {}

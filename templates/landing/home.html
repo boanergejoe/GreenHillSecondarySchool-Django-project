@@ -1,7 +1,8 @@
 {% extends 'landing/base.html' %}
-{% load static %}
+{% load i18n static school_i18n %}
+{% get_current_language as CURRENT_LANGUAGE %}
 
-{% block title %}{{ school_name }} | Knowledge, Integrity, Excellence{% endblock %}
+{% block title %}{{ school_name }} | {{ school_motto }}{% endblock %}
 {% block meta_description %}Learn about {{ school_name }} in {{ school_address }}. Find current term dates, curriculum subjects, school news, admissions contacts, and portal access.{% endblock %}
 
 {% block content %}
@@ -17,30 +18,35 @@
             <span class="eyebrow eyebrow-light hero-reveal">
                 <span class="eyebrow-dot"></span>{{ school_address }}
             </span>
-            <h1 class="hero-title hero-reveal">
-                Knowledge. Integrity.
-                <span class="gradient-text">Excellence.</span>
-            </h1>
+            <h1 class="hero-title hero-reveal">{{ "Nobility. Honor. Excellence."|school_translate }}</h1>
             <p class="hero-lead hero-reveal">
+                {% if CURRENT_LANGUAGE == 'fr' %}
+                Bienvenue à {{ school_name }}. Trouvez des informations pour les élèves et les familles,
+                découvrez notre programme scolaire et contactez le secrétariat.
+                {% elif CURRENT_LANGUAGE == 'ar' %}
+                مرحبًا بكم في {{ school_name }}. تعرّفوا على المعلومات الخاصة بالطلاب والأسر،
+                واكتشفوا برنامجنا الأكاديمي، وتواصلوا مع مكتب المدرسة.
+                {% else %}
                 Welcome to {{ school_name }}. Find information for students and families,
                 explore our current academic programme, and contact the school office.
+                {% endif %}
             </p>
             <div class="hero-actions hero-reveal">
                 <a class="btn btn-primary btn-lg" href="#admissions">
-                    Admissions enquiries
+                    {{ "Admissions enquiries"|school_translate }}
                     <i class="bi bi-arrow-right" aria-hidden="true"></i>
                 </a>
                 <a class="btn btn-glass btn-lg" href="{% url 'accounts:login' %}">
                     <i class="bi bi-person-lock" aria-hidden="true"></i>
-                    School portal
+                    {{ "School portal"|school_translate }}
                 </a>
             </div>
         </div>
-        <aside class="school-welcome-card hero-reveal" aria-label="School contact information">
+        <aside class="school-welcome-card hero-reveal" aria-label="{{ 'School information'|school_translate }}">
             <img src="{% static 'images/logo.jpeg' %}" alt="{{ school_name }} crest" width="88" height="88" onerror="this.onerror=null;this.src='{% static 'images/greenhill-mark.svg' %}'">
-            <span class="school-card-kicker">Our school</span>
+            <span class="school-card-kicker">{{ "Our school"|school_translate }}</span>
             <h2>{{ school_name }}</h2>
-            <p>{{ school_motto }}</p>
+            <p>{{ school_motto|school_translate }}</p>
             <address>{{ school_address }}</address>
             <a href="tel:{{ school_phone_primary|cut:' ' }}">
                 <i class="bi bi-telephone" aria-hidden="true"></i>{{ school_phone_primary }}
@@ -48,7 +54,7 @@
         </aside>
     </div>
     <div class="hero-scroll" aria-hidden="true">
-        <span>Explore the school</span>
+        <span>{{ "Explore the school"|school_translate }}</span>
         <i class="bi bi-arrow-down"></i>
     </div>
 </section>
@@ -56,18 +62,33 @@
 <section class="section school-intro" id="about">
     <div class="container school-intro-grid">
         <div>
-            <span class="eyebrow"><span class="eyebrow-dot"></span>Welcome to Green Hill</span>
-            <h2>A school community guided by <span class="gradient-text">purpose and care.</span></h2>
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "Welcome to Green Hill"|school_translate }}</span>
+            <h2>{{ "A school community guided by"|school_translate }} <span class="gradient-text">{{ "purpose and care."|school_translate }}</span></h2>
         </div>
         <div>
             <p class="section-lead">
+                {% if CURRENT_LANGUAGE == 'fr' %}
+                {{ school_name }} accompagne sa communauté à {{ school_address }}. Ce site aide les familles
+                à trouver des informations scolaires et la communauté à accéder au portail sécurisé.
+                {% elif CURRENT_LANGUAGE == 'ar' %}
+                تخدم {{ school_name }} مجتمعها في {{ school_address }}. يساعد هذا الموقع الأسر في العثور
+                على المعلومات المدرسية وأفراد المجتمع على الوصول إلى البوابة الآمنة.
+                {% else %}
                 {{ school_name }} serves its community in {{ school_address }}. This website
                 is a place for families to find school information and for the school community
                 to access its secure online portal.
+                {% endif %}
             </p>
             <p class="school-contact-line">
+                {% if CURRENT_LANGUAGE == 'fr' %}
+                Pour connaître les conditions d’inscription et les places disponibles, contactez directement
+                le secrétariat. Il vous donnera les informations les plus récentes.
+                {% elif CURRENT_LANGUAGE == 'ar' %}
+                لمعرفة متطلبات التسجيل والأماكن المتاحة، يرجى التواصل مباشرةً مع مكتب المدرسة للحصول على أحدث الإرشادات.
+                {% else %}
                 For current enrolment requirements and availability, contact the school office
                 directly. The office can provide the latest guidance for your family.
+                {% endif %}
             </p>
         </div>
     </div>
@@ -76,9 +97,9 @@
 <section class="section school-section school-term-section" id="term-dates">
     <div class="container">
         <div class="section-heading">
-            <span class="eyebrow"><span class="eyebrow-dot"></span>Academic calendar</span>
-            <h2>Term dates{% if current_academic_year %} for {{ current_academic_year.name }}{% endif %}</h2>
-            <p>Dates shown here are taken from the school’s current academic calendar.</p>
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "Academic calendar"|school_translate }}</span>
+            <h2>{{ "Term dates"|school_translate }}{% if current_academic_year %} · {{ current_academic_year.name }}{% endif %}</h2>
+            <p>{{ "Dates shown here are taken from the school’s current academic calendar."|school_translate }}</p>
         </div>
         {% if current_academic_year and term_dates %}
         <div class="school-term-grid">
@@ -86,13 +107,13 @@
             <article class="school-term-card">
                 <span>{{ term.name }}</span>
                 <strong>{{ term.start_date|date:"j M Y" }} – {{ term.end_date|date:"j M Y" }}</strong>
-                {% if term.is_current %}<small>Current term</small>{% endif %}
+                {% if term.is_current %}<small>{{ "Current term"|school_translate }}</small>{% endif %}
             </article>
             {% endfor %}
         </div>
         {% else %}
         <div class="school-empty-note">
-            Term dates have not been published yet. Please contact the school office for the latest calendar.
+            {{ "Term dates have not been published yet. Please contact the school office for the latest calendar."|school_translate }}
         </div>
         {% endif %}
     </div>
@@ -101,11 +122,11 @@
 <section class="section school-section school-curriculum-section" id="academics">
     <div class="container">
         <div class="section-heading">
-            <span class="eyebrow"><span class="eyebrow-dot"></span>Learning at Green Hill</span>
-            <h2>Current curriculum subjects</h2>
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "Learning at Green Hill"|school_translate }}</span>
+            <h2>{{ "Current curriculum subjects"|school_translate }}</h2>
             <p>
                 Subjects configured for the current school year{% if current_academic_year %}, {{ current_academic_year.name }}{% endif %}.
-                Contact the school for class-specific subject information.
+                {{ "Contact the school for class-specific subject information."|school_translate }}
             </p>
         </div>
         {% if curriculum_subjects %}
@@ -116,7 +137,7 @@
         </ul>
         {% else %}
         <div class="school-empty-note">
-            Curriculum information is being updated. Please contact the school office for current subject details.
+            {{ "Curriculum information is being updated. Please contact the school office for current subject details."|school_translate }}
         </div>
         {% endif %}
     </div>
@@ -125,9 +146,9 @@
 <section class="section school-section school-news-section" id="news">
     <div class="container">
         <div class="section-heading">
-            <span class="eyebrow"><span class="eyebrow-dot"></span>From the school</span>
-            <h2>School news and updates</h2>
-            <p>Updates marked for public sharing by the school are shown here.</p>
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "From the school"|school_translate }}</span>
+            <h2>{{ "School news and updates"|school_translate }}</h2>
+            <p>{{ "Updates marked for public sharing by the school are shown here."|school_translate }}</p>
         </div>
         <div class="school-news-grid">
             {% for announcement in public_news %}
@@ -139,10 +160,16 @@
                 {% endif %}
                 <h3>{{ announcement.title }}</h3>
                 <p>{{ announcement.message|truncatewords:35 }}</p>
+                {% if announcement.message|wordcount > 35 %}
+                <details class="announcement-full-text">
+                    <summary>{{ "Read full announcement"|school_translate }}</summary>
+                    <div>{{ announcement.message|linebreaksbr }}</div>
+                </details>
+                {% endif %}
             </article>
             {% empty %}
             <div class="school-empty-note">
-                There are no public updates at the moment. Please contact the school office if you need assistance.
+                {{ "There are no public updates at the moment. Please contact the school office if you need assistance."|school_translate }}
             </div>
             {% endfor %}
         </div>
@@ -152,8 +179,8 @@
 <section class="section school-gallery-section" id="school-life">
     <div class="container">
         <div class="section-heading">
-            <span class="eyebrow"><span class="eyebrow-dot"></span>School life</span>
-            <h2>Our school community</h2>
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "School life"|school_translate }}</span>
+            <h2>{{ "Our school community"|school_translate }}</h2>
             <p>Moments from learning and community life at {{ school_name }}.</p>
         </div>
         <div class="gallery-grid">
@@ -173,11 +200,23 @@
 <section class="school-admissions-section" id="admissions">
     <div class="container school-admissions-card">
         <div>
-            <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span>Admissions enquiries</span>
-            <h2>Planning to join {{ school_name }}?</h2>
-            <p>Start by preparing the applicant’s previous class or school results for review.</p>
+            <span class="eyebrow eyebrow-light"><span class="eyebrow-dot"></span>{{ "Admissions enquiries"|school_translate }}</span>
+            <h2>
+                {% if CURRENT_LANGUAGE == 'fr' %}Vous souhaitez rejoindre {{ school_name }} ?
+                {% elif CURRENT_LANGUAGE == 'ar' %}هل تخطط للالتحاق بـ {{ school_name }}؟
+                {% else %}Planning to join {{ school_name }}?{% endif %}
+            </h2>
+            <p>
+                {% if CURRENT_LANGUAGE == 'fr' %}Préparez les résultats de la classe ou de l’école précédente du candidat.
+                {% elif CURRENT_LANGUAGE == 'ar' %}ابدأ بتجهيز نتائج الصف أو المدرسة السابقة للمتقدم للمراجعة.
+                {% else %}Start by preparing the applicant’s previous class or school results for review.{% endif %}
+            </p>
             <ul class="school-admissions-steps">
-                <li>Contact the school office to confirm current class availability and how to apply.</li>
+                <li>
+                    {% if CURRENT_LANGUAGE == 'fr' %}Contactez le secrétariat pour vérifier les places disponibles et la procédure.
+                    {% elif CURRENT_LANGUAGE == 'ar' %}تواصل مع مكتب المدرسة لتأكيد توفر الصفوف ومعرفة كيفية التقديم.
+                    {% else %}Contact the school office to confirm current class availability and how to apply.{% endif %}
+                </li>
                 <li>Have the applicant’s previous class or school results ready for assessment.</li>
                 <li>Ask the office to confirm any additional requirements before submitting an application.</li>
                 <li>Admissions fees are provided in person at the school office.</li>
@@ -185,11 +224,36 @@
         </div>
         <div class="school-admissions-actions">
             <a class="btn btn-light" href="tel:{{ school_phone_primary|cut:' ' }}">
-                <i class="bi bi-telephone" aria-hidden="true"></i>Call the school
+                <i class="bi bi-telephone" aria-hidden="true"></i>{{ "Call the school"|school_translate }}
             </a>
             <a class="btn btn-outline-light" href="mailto:{{ school_email }}">
-                <i class="bi bi-envelope" aria-hidden="true"></i>Email the school
+                <i class="bi bi-envelope" aria-hidden="true"></i>{{ "Email the school"|school_translate }}
             </a>
+        </div>
+    </div>
+</section>
+
+<section class="section school-assistant-section" id="school-assistant">
+    <div class="container">
+        <div class="section-heading">
+            <span class="eyebrow"><span class="eyebrow-dot"></span>{{ "School information"|school_translate }}</span>
+            <h2>{{ "Ask our information assistant"|school_translate }}</h2>
+            <p>{{ "Ask about public school information, contact details, announcements, or term dates."|school_translate }}</p>
+        </div>
+        <div class="school-assistant-panel">
+            <form id="schoolAssistantForm" action="{% url 'school_assistant' %}" method="post">
+                {% csrf_token %}
+                <label for="schoolAssistantQuestion" class="form-label">{{ "Your question"|school_translate }}</label>
+                <div class="school-assistant-controls">
+                    <input id="schoolAssistantQuestion" name="question" type="text" maxlength="500" required
+                           autocomplete="off" placeholder="{{ 'How can I contact the school?'|school_translate }}">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-send" aria-hidden="true"></i> {{ "Ask"|school_translate }}
+                    </button>
+                </div>
+                <small>{{ "Do not enter student names, health details, payment information, or passwords."|school_translate }}</small>
+            </form>
+            <div id="schoolAssistantAnswer" class="school-assistant-answer" aria-live="polite" hidden></div>
         </div>
     </div>
 </section>
@@ -207,18 +271,18 @@
                 <p>{{ school_address }}. {{ school_motto }}.</p>
             </div>
             <div class="footer-column">
-                <h3>School information</h3>
-                <a href="#academics">Curriculum</a>
-                <a href="#term-dates">Term dates</a>
-                <a href="#news">School news</a>
-                <a href="#admissions">Admissions</a>
+                <h3>{{ "School information"|school_translate }}</h3>
+                <a href="#academics">{{ "Curriculum"|school_translate }}</a>
+                <a href="#term-dates">{{ "Term dates"|school_translate }}</a>
+                <a href="#news">{{ "School news and updates"|school_translate }}</a>
+                <a href="#admissions">{{ "Admissions enquiries"|school_translate }}</a>
             </div>
             <div class="footer-column">
-                <h3>School portal</h3>
-                <a href="{% url 'accounts:login' %}">Portal login</a>
+                <h3>{{ "School portal"|school_translate }}</h3>
+                <a href="{% url 'accounts:login' %}">{{ "Portal login"|school_translate }}</a>
             </div>
             <div class="footer-column footer-contact">
-                <h3>Contact the school</h3>
+                <h3>{{ "Contact the school"|school_translate }}</h3>
                 <a href="mailto:{{ school_email }}"><i class="bi bi-envelope"></i>{{ school_email }}</a>
                 <a href="tel:{{ school_phone_primary|cut:' ' }}"><i class="bi bi-telephone"></i>{{ school_phone_primary }}</a>
                 <a href="tel:{{ school_phone_secondary|cut:' ' }}"><i class="bi bi-telephone"></i>{{ school_phone_secondary }}</a>
@@ -226,15 +290,52 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <span>&copy; {% now "Y" %} {{ school_name }}. All rights reserved.</span>
+            <span>&copy; {% now "Y" %} {{ school_name }}. {{ "All rights reserved."|school_translate }}</span>
             <div class="footer-legal-links">
-                <a class="footer-legal" href="{% url 'privacy_policy' %}">Privacy Policy</a>
-                <a class="footer-legal" href="{% url 'terms_of_service' %}">Terms of Service</a>
-                <a class="footer-legal" href="{% url 'cookie_policy' %}">Cookie Policy</a>
-                <a class="footer-legal" href="{% url 'data_protection' %}">Data Protection</a>
-                <a class="footer-legal" href="{% url 'child_protection' %}">Child Protection</a>
+                <a class="footer-legal" href="{% url 'privacy_policy' %}">{{ "Privacy Policy"|school_translate }}</a>
+                <a class="footer-legal" href="{% url 'terms_of_service' %}">{{ "Terms of Service"|school_translate }}</a>
+                <a class="footer-legal" href="{% url 'cookie_policy' %}">{{ "Cookie Policy"|school_translate }}</a>
+                <a class="footer-legal" href="{% url 'data_protection' %}">{{ "Data Protection"|school_translate }}</a>
+                <a class="footer-legal" href="{% url 'child_protection' %}">{{ "Child Protection"|school_translate }}</a>
             </div>
         </div>
     </div>
 </footer>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        var form = document.getElementById("schoolAssistantForm");
+        var answer = document.getElementById("schoolAssistantAnswer");
+        if (!form || !answer) return;
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var button = form.querySelector("button[type='submit']");
+            var question = form.querySelector("[name='question']").value.trim();
+            answer.hidden = false;
+            answer.textContent = "Getting an answer...";
+            button.disabled = true;
+            fetch(form.action, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": form.querySelector("[name='csrfmiddlewaretoken']").value
+                },
+                body: JSON.stringify({ question: question })
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) throw new Error(data.error || "The assistant could not answer right now.");
+                    return data;
+                });
+            }).then(function (data) {
+                answer.textContent = data.answer;
+            }).catch(function (error) {
+                answer.textContent = error.message || "The assistant could not answer right now.";
+            }).finally(function () {
+                button.disabled = false;
+            });
+        });
+    }());
+</script>
 {% endblock %}

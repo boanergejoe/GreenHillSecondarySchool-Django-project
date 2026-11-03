@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Archived Students{% endblock %}
+{% block page_heading %}Archived Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>Archived Students</h3><p>Records and history are retained. Restore a student to re-enable their prior account status.</p></div>
+    <a href="{% url 'students:student_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Student Records</a>
+</div>
+<form method="get" class="filter-bar">
+    <div class="search-box flex-grow-1">
+        <i class="bi bi-search"></i>
+        <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search archived students...">
+    </div>
+    <button class="btn btn-navy"><i class="bi bi-search me-1"></i>Search</button>
+</form>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Student ID</th><th>Name</th><th>Class</th><th>Archived</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for student in objects %}
+                <tr>
+                    <td>{{ student.student_id }}</td>
+                    <td><a href="{% url 'students:student_detail' student.pk %}">{{ student.full_name }}</a></td>
+                    <td>{{ student.school_class.name|default:"-" }}</td>
+                    <td>{{ student.archived_at|date:"d M Y H:i" }}</td>
+                    <td>
+                        <form method="post" action="{% url 'students:student_restore' student.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-counterclockwise me-1"></i>Restore</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="empty-state"><i class="bi bi-archive"></i>No archived student records.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

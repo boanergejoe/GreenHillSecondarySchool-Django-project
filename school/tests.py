@@ -1,31 +1,38 @@
+import json
+from io import BytesIO, StringIO
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError
 
 from django.conf import settings
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from academics.access import teacher_classes
+from academics.access import teacher_classes, teacher_subjects
 from academics.forms import EnrollmentForm, SubjectForm, TermForm
 from academics.models import (
     AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
 )
 from accounts.models import User
-from assignments.models import Assignment
+from assignments.models import Assignment, Quiz, QuizAttempt, QuizQuestion
 from attendance.models import Attendance
 from communications.models import Announcement
 from examinations.forms import ExaminationForm
 from examinations.models import Examination, Result
-from finance.forms import FeeForm
+from finance.forms import FeeForm, PaymentForm
 from finance.models import Fee, Payment
-from finance.services import active_fees_for_student
+from finance.services import (
+    active_fees_for_student, exam_eligibility_for_student, fee_totals_for_student,
+)
 from students.forms import StudentForm
-from students.models import Parent, Student
+from students.models import Parent, ReadmissionRequest, Student
 from teachers.models import Teacher
 
 
@@ -43,10 +50,29 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         return user
 
     def test_all_role_dashboards_render(self):
-        for username in ('admin', 'teacher1', 'student1', 'parent1', 'accountant'):
+        for username in (
+            'admin', 'teacher1', 'student1', 'parent1', 'accountant',
+            'registrar',
+        ):
             self.login(username)
             response = self.client.get(reverse('accounts:dashboard'))
             self.assertEqual(response.status_code, 200, username)
+            if username == 'registrar':
+                self.assertEqual(response.context['dashboard_type'], 'registrar')
+
+    def test_registrar_dashboard_displays_student_records_and_actions(self):
+        response = self.client.post(
+            reverse('accounts:login'),
+            {'username': 'registrar', 'password': 'Registrar@12345'},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['dashboard_type'], 'registrar')
+        self.assertTrue(response.context['user'].is_authenticated)
+        self.assertContains(response, 'Admissions and records')
+        self.assertContains(response, reverse('students:student_create'))
+        self.assertContains(response, reverse('students:archived_students'))
+        self.assertContains(response, reverse('students:student_list'))
 
     def test_admin_management_pages_render(self):
         self.login('admin')
@@ -261,8 +287,12 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_accountant_records_payment_and_parent_can_download_receipt(self):
         parent = Parent.objects.get(user__username='parent1')
         student = parent.children.select_related('user', 'school_class').first()
-        fee = active_fees_for_student(student).first()
-        self.assertIsNotNone(fee)
+        fee = Fee.objects.create(
+            name='Workflow payment fee',
+            school_class=student.school_class,
+            academic_year=student.school_class.academic_year,
+            amount=Decimal('5000.00'),
+        )
         accountant = self.login('accountant')
         response = self.client.post(reverse('finance:payment_create'), {
             'student': student.pk,
@@ -286,6 +316,53 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         response = self.client.get(reverse('finance:receipt_pdf', args=[payment.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_payment_form_supplies_only_student_applicable_fee_data(self):
+        self.login('accountant')
+        student = Parent.objects.get(
+            user__username='parent1'
+        ).children.select_related('school_class').first()
+        response = self.client.get(reverse('finance:payment_create'))
+        self.assertEqual(response.status_code, 200)
+        student_data = response.context['payment_auto_fill_data'][str(student.pk)]
+        self.assertEqual(student_data['class_name'], student.school_class.name)
+        self.assertEqual(
+            student_data['academic_year'],
+            student.school_class.academic_year.name,
+        )
+        self.assertEqual(
+            {int(item['id']) for item in student_data['fees']},
+            set(active_fees_for_student(student).values_list('pk', flat=True)),
+        )
+        self.assertContains(response, 'payment-auto-fill-data')
+
+    def test_payment_form_rejects_wrong_class_fees_and_overpayment(self):
+        student = Student.objects.exclude(school_class__isnull=True).first()
+        fee = Fee.objects.create(
+            name='Payment validation fee',
+            school_class=student.school_class,
+            academic_year=student.school_class.academic_year,
+            amount=Decimal('100.00'),
+        )
+        data = {
+            'student': student.pk,
+            'fee': fee.pk,
+            'amount': '101.00',
+            'payment_date': timezone.localdate().isoformat(),
+            'method': Payment.Method.CASH,
+        }
+        form = PaymentForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('amount', form.errors)
+
+        other_student = Student.objects.exclude(
+            school_class_id=student.school_class_id
+        ).exclude(school_class__isnull=True).first()
+        self.assertIsNotNone(other_student)
+        data.update({'student': other_student.pk, 'amount': '1.00'})
+        form = PaymentForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('fee', form.errors)
 
     def test_results_are_hidden_until_teacher_entry_is_published(self):
         teacher = self.login('teacher1')
@@ -397,7 +474,10 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(user.role, User.Role.STUDENT)
         self.assertTrue(user.check_password('Student@12345'))
         self.assertEqual(user.student_profile.school_class, school_class)
-        self.assertEqual(user.student_profile.department, department)
+        if school_class.level in (SchoolClass.Level.SENIOR_1, SchoolClass.Level.SENIOR_2):
+            self.assertIsNone(user.student_profile.department)
+        else:
+            self.assertEqual(user.student_profile.department, department)
         enrollments = Enrollment.objects.filter(student=user.student_profile)
         self.assertEqual(enrollments.count(), len(terms))
         self.assertSetEqual(
@@ -491,7 +571,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'landing/home.html')
-        self.assertContains(response, 'Knowledge. Integrity.')
+        self.assertContains(response, 'Nobility. Honor.')
         self.assertContains(response, 'Admissions enquiries')
         self.assertContains(response, 'previous class or school results')
         self.assertContains(response, 'confirm any additional requirements')
@@ -557,14 +637,42 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(len(normalized_names), len(set(normalized_names)))
         self.assertEqual(normalized_names.count(existing_subject.name.casefold()), 1)
 
+    def test_public_language_switch_translates_content_and_sets_arabic_direction(self):
+        response = self.client.post(reverse('set_language'), {
+            'language': 'fr',
+            'next': '/',
+        })
+        self.assertEqual(response.status_code, 302)
+        french = self.client.get(reverse('home'))
+        self.assertContains(french, 'Accueil')
+        self.assertContains(french, 'Noblesse. Honneur. Excellence.')
+
+        self.client.post(reverse('set_language'), {
+            'language': 'ar',
+            'next': '/',
+        })
+        arabic = self.client.get(reverse('home'))
+        self.assertContains(arabic, 'الرئيسية')
+        self.assertContains(arabic, 'dir="rtl"')
+
+        self.client.post(reverse('set_language'), {
+            'language': 'fr',
+            'next': '/',
+        })
+        self.login('teacher1')
+        portal = self.client.get(reverse('accounts:dashboard'))
+        self.assertContains(portal, 'Mes matières')
+
     def test_create_forms_require_visible_fields_but_not_generated_ids_or_files(self):
         self.login('admin')
         response = self.client.get(reverse('students:student_create'))
         form = response.context['form']
+        self.assertContains(response, 'data-department-field')
+        self.assertContains(response, 'data-level="Senior 1"')
         required_fields = (
             'username', 'first_name', 'last_name', 'email', 'phone', 'password',
             'school_class', 'parent', 'admission_date', 'date_of_birth', 'gender',
-            'department', 'term', 'status', 'address', 'guardian_name',
+            'term', 'status', 'address', 'guardian_name',
             'guardian_phone', 'blood_group',
             'medical_notes',
         )
@@ -574,6 +682,7 @@ class GreenHillSecondaryIntegrationTests(TestCase):
                 form.fields[name].widget, forms.CheckboxSelectMultiple
             ):
                 self.assertIn('required', form.fields[name].widget.attrs, name)
+        self.assertFalse(form.fields['department'].required)
         self.assertIn('student safety', form.fields['medical_notes'].help_text)
         self.assertFalse(form.fields['student_id'].required)
 
@@ -1062,6 +1171,145 @@ class GreenHillSecondaryIntegrationTests(TestCase):
             reverse('examinations:report_card_pdf', args=[student.pk, exam.pk]),
         )
 
+    def test_student_dashboard_offers_re_admission_request(self):
+        self.login('student1')
+        response = self.client.get(reverse('accounts:dashboard'))
+        self.assertContains(response, 'Re-admission')
+        self.assertContains(
+            response, reverse('students:readmission_request')
+        )
+
+    def test_student_can_request_re_admission_without_changing_enrollment(self):
+        student = User.objects.get(username='student1').student_profile
+        previous_class = student.school_class
+        self.login('student1')
+        response = self.client.post(
+            reverse('students:readmission_request'),
+            {
+                'school_class': previous_class.pk,
+                'terms': [Term.Name.TERM_1, Term.Name.TERM_2],
+                'message': 'Please enroll me for the selected terms.',
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        request = ReadmissionRequest.objects.get(student=student)
+        self.assertEqual(request.status, ReadmissionRequest.Status.PENDING)
+        self.assertEqual(request.terms, [Term.Name.TERM_1, Term.Name.TERM_2])
+        student.refresh_from_db()
+        self.assertEqual(student.school_class_id, previous_class.pk)
+        self.assertContains(response, 'awaiting Registrar review')
+        self.assertNotContains(
+            response, reverse('students:readmission_request')
+        )
+
+    def test_registrar_can_approve_readmission_request(self):
+        student = User.objects.get(username='student1').student_profile
+        school_class = student.school_class
+        readmission_request = ReadmissionRequest.objects.create(
+            student=student,
+            school_class=school_class,
+            terms=[Term.Name.TERM_1],
+            message='Returning for this term.',
+        )
+        registrar = self.login('registrar')
+        response = self.client.get(
+            reverse('students:readmission_request_list')
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, student.student_id)
+        response = self.client.post(
+            reverse(
+                'students:readmission_request_review',
+                args=[readmission_request.pk],
+            ),
+            {'action': 'approve', 'reviewer_note': 'Approved.'},
+        )
+        self.assertRedirects(
+            response, reverse('students:readmission_request_list')
+        )
+        readmission_request.refresh_from_db()
+        student.refresh_from_db()
+        self.assertEqual(
+            readmission_request.status, ReadmissionRequest.Status.APPROVED
+        )
+        self.assertEqual(readmission_request.reviewed_by, registrar)
+        self.assertTrue(
+            student.enrollments.filter(
+                school_class=school_class,
+                academic_year=school_class.academic_year,
+                term=Term.Name.TERM_1,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_student_cannot_submit_duplicate_pending_re_admission_requests(self):
+        student = User.objects.get(username='student1').student_profile
+        school_class = student.school_class
+        self.login('student1')
+        request_url = reverse('students:readmission_request')
+        request_data = {
+            'school_class': school_class.pk,
+            'terms': [Term.Name.TERM_1],
+            'message': '',
+        }
+        first_response = self.client.post(request_url, request_data)
+        self.assertRedirects(first_response, reverse('accounts:dashboard'))
+        second_response = self.client.post(request_url, request_data)
+        self.assertRedirects(second_response, reverse('accounts:dashboard'))
+        self.assertEqual(
+            ReadmissionRequest.objects.filter(
+                student=student, status=ReadmissionRequest.Status.PENDING
+            ).count(),
+            1,
+        )
+
+    def test_registrar_can_reject_request_without_changing_enrollment(self):
+        student = User.objects.get(username='student1').student_profile
+        old_class_id = student.school_class_id
+        request = ReadmissionRequest.objects.create(
+            student=student,
+            school_class=student.school_class,
+            terms=[Term.Name.TERM_1],
+        )
+        self.login('registrar')
+        response = self.client.post(
+            reverse('students:readmission_request_review', args=[request.pk]),
+            {'action': 'reject', 'reviewer_note': 'Please contact the office.'},
+        )
+        self.assertRedirects(
+            response, reverse('students:readmission_request_list')
+        )
+        request.refresh_from_db()
+        student.refresh_from_db()
+        self.assertEqual(request.status, ReadmissionRequest.Status.REJECTED)
+        self.assertEqual(
+            request.reviewer_note, 'Please contact the office.'
+        )
+        self.assertEqual(student.school_class_id, old_class_id)
+
+    def test_only_registrar_can_review_re_admission_requests(self):
+        readmission_request = ReadmissionRequest.objects.create(
+            student=User.objects.get(username='student1').student_profile,
+            school_class=User.objects.get(
+                username='student1'
+            ).student_profile.school_class,
+            terms=[Term.Name.TERM_1],
+        )
+        self.login('teacher1')
+        response = self.client.get(
+            reverse('students:readmission_request_list')
+        )
+        self.assertEqual(response.status_code, 403)
+        response = self.client.post(
+            reverse(
+                'students:readmission_request_review',
+                args=[readmission_request.pk],
+            ),
+            {'action': 'approve'},
+        )
+        self.assertEqual(response.status_code, 403)
+
     def test_report_exports_and_pdf_documents_render(self):
         self.login('admin')
         exports = [
@@ -1085,3 +1333,475 @@ class GreenHillSecondaryIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         response = self.client.get(reverse('finance:receipt_pdf', args=[payment.pk]))
         self.assertEqual(response.status_code, 200)
+
+    def test_quiz_generation_saves_reviewable_draft(self):
+        teacher = self.login('teacher1')
+        subject = teacher_subjects(teacher).filter(
+            school_classes__students__status=Student.Status.ACTIVE
+        ).distinct().first()
+        self.assertIsNotNone(subject)
+        generated = [{
+            'prompt': 'Which number is prime?',
+            'options': ['4', '5', '6', '8'],
+            'answer': 1,
+        }]
+        with patch(
+            'assignments.views.generate_multiple_choice_questions',
+            return_value=generated,
+        ):
+            response = self.client.post(reverse('assignments:quiz_create'), {
+                'subject': subject.pk,
+                'title': 'Prime number check',
+                'topic': 'Prime numbers',
+                'question_count': 1,
+                'description': 'Check prime numbers.',
+            })
+        quiz = Quiz.objects.get(title='Prime number check')
+        self.assertRedirects(
+            response, reverse('assignments:quiz_detail', args=[quiz.pk])
+        )
+        self.assertFalse(quiz.is_published)
+        question = quiz.questions.get()
+        self.assertEqual(question.correct_option, 1)
+        response = self.client.post(
+            reverse('assignments:quiz_publish', args=[quiz.pk])
+        )
+        self.assertRedirects(
+            response, reverse('assignments:quiz_detail', args=[quiz.pk])
+        )
+        quiz.refresh_from_db()
+        self.assertTrue(quiz.is_published)
+
+    def test_teacher_quiz_list_loads_assigned_subjects(self):
+        teacher = self.login('teacher1')
+        response = self.client.get(reverse('assignments:quiz_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_student_quiz_attempt_is_scoped_and_auto_graded_once(self):
+        student = User.objects.get(username='student1').student_profile
+        subject = Subject.objects.filter(
+            school_classes=student.school_class
+        ).first()
+        quiz = Quiz.objects.create(
+            subject=subject,
+            title='Science check',
+            created_by=User.objects.get(username='teacher1'),
+            is_published=True,
+        )
+        question = QuizQuestion.objects.create(
+            quiz=quiz,
+            prompt='Select the correct answer.',
+            option_a='Wrong',
+            option_b='Correct',
+            option_c='Wrong',
+            option_d='Wrong',
+            correct_option=1,
+            position=1,
+        )
+        self.login('student1')
+        response = self.client.post(
+            reverse('assignments:quiz_attempt', args=[quiz.pk]),
+            {f'question_{question.pk}': '1'},
+        )
+        self.assertRedirects(
+            response, reverse('assignments:quiz_detail', args=[quiz.pk])
+        )
+        attempt = QuizAttempt.objects.get(quiz=quiz, student=student)
+        self.assertEqual(attempt.score, 1)
+        self.assertEqual(attempt.answers, {str(question.pk): 1})
+        self.client.post(
+            reverse('assignments:quiz_attempt', args=[quiz.pk]),
+            {f'question_{question.pk}': '0'},
+        )
+        self.assertEqual(QuizAttempt.objects.filter(quiz=quiz, student=student).count(), 1)
+
+    def test_teacher_can_enter_marks_for_assigned_subjects(self):
+        teacher = self.login('teacher1')
+        subject = teacher_subjects(teacher).filter(
+            school_classes__students__status=Student.Status.ACTIVE
+        ).distinct().first()
+        self.assertIsNotNone(subject)
+        exam = Examination.objects.filter(
+            academic_year=subject.academic_year,
+            school_classes__in=subject.school_classes.all(),
+        ).distinct().first()
+        self.assertIsNotNone(exam)
+        school_class = subject.school_classes.filter(
+            pk__in=exam.school_classes.values_list('pk', flat=True)
+        ).first()
+        student = Student.objects.filter(
+            school_class=school_class, status=Student.Status.ACTIVE
+        ).first()
+        self.assertIsNotNone(student)
+        response = self.client.post(
+            reverse('examinations:enter_results', args=[exam.pk]),
+            {
+                'subject': subject.pk,
+                f'marks_{student.pk}': '77',
+            },
+        )
+        self.assertRedirects(
+            response, reverse('examinations:exam_detail', args=[exam.pk])
+        )
+        result = Result.objects.get(
+            examination=exam, subject=subject, student=student
+        )
+        self.assertEqual(result.marks_obtained, Decimal('77'))
+        self.assertEqual(result.entered_by, teacher)
+
+    def test_ai_grading_suggestion_requires_teacher_save(self):
+        teacher = self.login('teacher1')
+        subject = teacher_subjects(teacher).filter(
+            school_classes__students__status=Student.Status.ACTIVE
+        ).distinct().first()
+        student = Student.objects.filter(
+            school_class__in=subject.school_classes.all()
+        ).first()
+        assignment = Assignment.objects.create(
+            subject=subject,
+            title='Written assessment',
+            description='Explain the topic.',
+            due_date=timezone.now() + timedelta(days=1),
+            max_score=10,
+            created_by=teacher,
+        )
+        submission = Assignment.objects.get(pk=assignment.pk).submissions.create(
+            student=student,
+            comment='A short written response.',
+        )
+        with patch(
+            'assignments.views.evaluate_written_submission',
+            return_value=(Decimal('8'), 'Clear explanation.'),
+        ):
+            response = self.client.post(
+                reverse('assignments:review', args=[submission.pk]),
+                {'ai_suggest': '1'},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['suggested_grade'])
+        submission.refresh_from_db()
+        self.assertIsNone(submission.score)
+        self.assertContains(response, 'Clear explanation.')
+
+    def test_registrar_cannot_view_medical_data(self):
+        registrar = User.objects.create_user(
+            username='privacy-registrar',
+            password='Registrar@12345',
+            role=User.Role.REGISTRAR,
+        )
+        student = Student.objects.first()
+        self.client.force_login(registrar)
+        response = self.client.get(
+            reverse('students:student_detail', args=[student.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Blood Group')
+        self.assertNotContains(response, 'Medical Notes')
+
+    def test_school_assistant_handles_missing_key_explicitly(self):
+        with patch.dict('os.environ', {'OPENAI_API_KEY': ''}):
+            response = self.client.post(
+                reverse('school_assistant'),
+                data='{"question":"When does term begin?"}',
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('OPENAI_API_KEY', response.json()['error'])
+
+    def test_ai_connection_command_reports_missing_key_without_disclosing_secrets(self):
+        from io import StringIO
+
+        with patch.dict('os.environ', {'OPENAI_API_KEY': ''}):
+            with self.assertRaisesRegex(
+                CommandError, 'OPENAI_API_KEY is not configured'
+            ):
+                call_command('check_ai', stdout=StringIO())
+
+    def test_ai_client_sends_configured_key_and_model(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            'choices': [{'message': {'content': 'Connection check passed.'}}],
+        }).encode('utf-8')
+        with (
+            patch.dict('os.environ', {
+                'OPENAI_API_KEY': 'test-secret',
+                'OPENAI_MODEL': 'test-model',
+            }),
+            patch('school.ai.urlopen', return_value=response) as urlopen,
+        ):
+            from school.ai import answer_school_question
+
+            answer = answer_school_question(
+                'Check connection.', 'Green Hill Secondary School.'
+            )
+        self.assertEqual(answer, 'Connection check passed.')
+        request = urlopen.call_args.args[0]
+        self.assertEqual(
+            request.get_header('Authorization'), 'Bearer test-secret'
+        )
+        self.assertEqual(json.loads(request.data)['model'], 'test-model')
+
+    def test_ai_client_reports_actionable_provider_http_errors(self):
+        from school.ai import AIServiceError, answer_school_question
+
+        failures = {
+            401: 'rejected the API key',
+            403: 'does not have permission',
+            429: 'usage quota was reached',
+            400: 'configured model is not available',
+        }
+        with patch.dict('os.environ', {'OPENAI_API_KEY': 'test-secret'}):
+            for status, expected_message in failures.items():
+                with self.subTest(status=status):
+                    error = HTTPError(
+                        'https://api.openai.com/v1/chat/completions',
+                        status,
+                        'provider error',
+                        None,
+                        BytesIO(b''),
+                    )
+                    with patch('school.ai.urlopen', side_effect=error):
+                        with self.assertRaises(AIServiceError) as raised:
+                            answer_school_question('Test?', 'Public info.')
+                    self.assertIn(expected_message, str(raised.exception))
+                    self.assertNotIn('test-secret', str(raised.exception))
+
+    def test_ai_client_uses_default_model_when_configured_model_is_blank(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            'choices': [{'message': {'content': 'Connection check passed.'}}],
+        }).encode('utf-8')
+        with (
+            patch.dict('os.environ', {
+                'OPENAI_API_KEY': 'test-secret',
+                'OPENAI_MODEL': '  ',
+            }),
+            patch('school.ai.urlopen', return_value=response) as urlopen,
+        ):
+            from school.ai import answer_school_question
+
+            answer_school_question('Check connection.', 'Public info.')
+        request = urlopen.call_args.args[0]
+        self.assertEqual(json.loads(request.data)['model'], 'gpt-4o-mini')
+
+    def test_school_assistant_uses_only_public_school_context(self):
+        admin_user = User.objects.get(username='admin')
+        Announcement.objects.create(
+            title='Public office hours',
+            message='The office is open on weekdays.',
+            audience=Announcement.Audience.ALL,
+            is_published=True,
+            is_public=True,
+            created_by=admin_user,
+        )
+        Announcement.objects.create(
+            title='Private staff note',
+            message='This is not public information.',
+            audience=Announcement.Audience.TEACHERS,
+            is_published=True,
+            is_public=False,
+            created_by=admin_user,
+        )
+        with patch(
+            'school.views.answer_school_question',
+            return_value='Contact the school office.',
+        ) as assistant:
+            response = self.client.post(
+                reverse('school_assistant'),
+                data='{"question":"When is the office open?"}',
+                content_type='application/json',
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['answer'], 'Contact the school office.')
+        context = assistant.call_args.args[1]
+        self.assertIn('Public office hours', context)
+        self.assertNotIn('Private staff note', context)
+
+    def test_student_archive_and_restore_preserve_history_and_access(self):
+        registrar = User.objects.create_user(
+            username='registrar-test',
+            password='Registrar@12345',
+            role=User.Role.REGISTRAR,
+        )
+        student = Student.objects.select_related('user').first()
+        original_username = student.user.username
+        self.client.force_login(registrar)
+
+        response = self.client.post(
+            reverse('students:student_delete', args=[student.pk])
+        )
+        self.assertRedirects(response, reverse('students:student_list'))
+        student.refresh_from_db()
+        student.user.refresh_from_db()
+        self.assertTrue(student.is_archived)
+        self.assertFalse(student.user.is_active)
+        self.assertTrue(student.enrollments.exists())
+
+        response = self.client.post(
+            reverse('students:student_restore', args=[student.pk])
+        )
+        self.assertRedirects(response, reverse('students:archived_students'))
+        student.refresh_from_db()
+        student.user.refresh_from_db()
+        self.assertFalse(student.is_archived)
+        self.assertTrue(student.user.is_active)
+        self.assertEqual(student.user.username, original_username)
+
+    def test_student_readmission_keeps_id_and_prior_enrollments(self):
+        registrar = User.objects.create_user(
+            username='readmit-registrar',
+            password='Registrar@12345',
+            role=User.Role.REGISTRAR,
+        )
+        student = Student.objects.select_related('school_class').first()
+        old_class_id = student.school_class_id
+        old_student_id = student.student_id
+        new_class = SchoolClass.objects.exclude(pk=old_class_id).first()
+        self.client.force_login(registrar)
+        response = self.client.post(
+            reverse('students:student_readmit', args=[student.pk]),
+            {
+                'school_class': new_class.pk,
+                'terms': [Term.Name.TERM_1],
+                'admission_date': timezone.localdate().isoformat(),
+            },
+        )
+        self.assertRedirects(
+            response, reverse('students:student_detail', args=[student.pk])
+        )
+        student.refresh_from_db()
+        self.assertEqual(student.student_id, old_student_id)
+        self.assertEqual(student.school_class_id, new_class.pk)
+        self.assertFalse(
+            student.enrollments.filter(
+                school_class_id=old_class_id, is_active=True
+            ).exists()
+        )
+        self.assertTrue(
+            student.enrollments.filter(
+                school_class=new_class,
+                academic_year=new_class.academic_year,
+                term=Term.Name.TERM_1,
+                is_active=True,
+            ).exists()
+        )
+
+    def test_exam_eligibility_requires_every_current_fee_paid(self):
+        student = Student.objects.select_related('school_class').first()
+        year = student.school_class.academic_year
+        Payment.objects.filter(student=student).delete()
+        for applicable_fee in active_fees_for_student(student):
+            Payment.objects.create(
+                student=student,
+                fee=applicable_fee,
+                amount=applicable_fee.amount,
+                method=Payment.Method.CASH,
+            )
+        self.assertTrue(exam_eligibility_for_student(student)['eligible'])
+        fee = Fee.objects.create(
+            name='Eligibility test fee',
+            school_class=student.school_class,
+            academic_year=year,
+            amount=Decimal('125.00'),
+            is_active=True,
+        )
+        second_fee = Fee.objects.create(
+            name='Eligibility second test fee',
+            school_class=student.school_class,
+            academic_year=year,
+            amount=Decimal('50.00'),
+            is_active=True,
+        )
+        eligibility = exam_eligibility_for_student(student)
+        self.assertFalse(
+            eligibility['eligible'],
+            f'{eligibility}; new fee {fee.pk}; '
+            f'current fees {list(active_fees_for_student(student).values_list("pk", "amount"))}',
+        )
+        self.assertGreaterEqual(fee_totals_for_student(student)[2], Decimal('125.00'))
+        Payment.objects.create(
+            student=student,
+            fee=fee,
+            amount=Decimal('125.00'),
+            method=Payment.Method.CASH,
+        )
+        self.assertFalse(exam_eligibility_for_student(student)['eligible'])
+        Payment.objects.create(
+            student=student,
+            fee=second_fee,
+            amount=Decimal('50.00'),
+            method=Payment.Method.CASH,
+        )
+        self.assertTrue(exam_eligibility_for_student(student)['eligible'])
+
+    def test_student_dashboard_shows_professional_eligible_status_panel(self):
+        student = User.objects.get(username='student1').student_profile
+        Payment.objects.filter(student=student).delete()
+        fees = list(active_fees_for_student(student))
+        self.assertTrue(fees)
+        for fee in fees:
+            Payment.objects.create(
+                student=student,
+                fee=fee,
+                amount=fee.amount,
+                method=Payment.Method.CASH,
+            )
+
+        self.login('student1')
+        response = self.client.get(reverse('accounts:dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'eligibility-panel--eligible')
+        self.assertContains(response, 'Eligible to sit')
+        self.assertContains(response, '100%')
+        self.assertContains(response, 'All active fees')
+        self.assertContains(
+            response, reverse('finance:fee_statement', args=[student.pk])
+        )
+        self.assertEqual(response.context['exam_eligibility_progress'], 100)
+
+    def test_student_dashboard_explains_outstanding_eligibility_and_progress(self):
+        student = User.objects.get(username='student1').student_profile
+        Payment.objects.filter(student=student).delete()
+        first_fee = active_fees_for_student(student).first()
+        self.assertIsNotNone(first_fee)
+        Payment.objects.create(
+            student=student,
+            fee=first_fee,
+            amount=first_fee.amount / Decimal('2'),
+            method=Payment.Method.CASH,
+        )
+        self.login('student1')
+
+        response = self.client.get(reverse('accounts:dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'eligibility-panel--outstanding')
+        self.assertContains(response, 'Payment required')
+        self.assertContains(response, 'outstanding fee balance')
+        self.assertContains(response, 'Outstanding')
+        self.assertContains(
+            response, reverse('finance:fee_statement', args=[student.pk])
+        )
+        self.assertLess(response.context['exam_eligibility_progress'], 100)
+        self.assertGreater(response.context['exam_eligibility_progress'], 0)
+
+    def test_student_dashboard_shows_unassessed_when_no_active_fees_exist(self):
+        student = User.objects.get(username='student1').student_profile
+        Fee.objects.filter(
+            academic_year=student.school_class.academic_year
+        ).update(is_active=False)
+        self.login('student1')
+
+        response = self.client.get(reverse('accounts:dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'eligibility-panel--unavailable')
+        self.assertContains(response, 'Not assessed')
+        self.assertContains(response, 'eligibility cannot be assessed')
+        self.assertNotContains(response, 'Payment progress')
+        self.assertContains(
+            response, reverse('finance:fee_statement', args=[student.pk])
+        )

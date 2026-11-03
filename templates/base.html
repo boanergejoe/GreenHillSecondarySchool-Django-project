@@ -1,13 +1,19 @@
-{% load static school_extras %}
+{% load i18n static school_extras school_i18n %}
 <!DOCTYPE html>
-<html lang="en">
+{% get_current_language as CURRENT_LANGUAGE %}
+<html lang="{{ CURRENT_LANGUAGE }}" dir="{% if CURRENT_LANGUAGE == 'ar' %}rtl{% else %}ltr{% endif %}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} | {{ school_name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=6">
+    <script>
+        try {
+            document.documentElement.dataset.theme = localStorage.getItem('ghss-theme') || 'light';
+        } catch (error) {}
+    </script>
     <link rel="stylesheet" href="{% static 'css/legal.css' %}?v=4">
     {% block extra_css %}{% endblock %}
 </head>
@@ -28,152 +34,181 @@
 
         <nav class="sidebar-nav">
             <a class="nav-link {% if 'dashboard' in request.path %}active{% endif %}" href="{% url 'accounts:dashboard' %}">
-                <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+                <i class="bi bi-grid-1x2-fill"></i><span>{{ "Dashboard"|school_translate }}</span>
             </a>
 
             {% if user.is_superuser or user.role == 'admin' %}
-                <div class="sidebar-group">People</div>
+                <div class="sidebar-group">{{ "People"|school_translate }}</div>
                 <a class="nav-link {% if '/students/' in request.path and 'parents' not in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
-                    <i class="bi bi-people-fill"></i><span>Students</span>
+                    <i class="bi bi-people-fill"></i><span>{{ "Students"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if 'parents' in request.path %}active{% endif %}" href="{% url 'students:parent_list' %}">
-                    <i class="bi bi-person-heart"></i><span>Parents</span>
+                    <i class="bi bi-person-heart"></i><span>{{ "Parents"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/teachers/' in request.path %}active{% endif %}" href="{% url 'teachers:teacher_list' %}">
-                    <i class="bi bi-person-video3"></i><span>Teachers</span>
+                    <i class="bi bi-person-video3"></i><span>{{ "Teachers"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/staff/' in request.path %}active{% endif %}" href="{% url 'accounts:user_list' %}">
-                    <i class="bi bi-person-gear"></i><span>Staff Accounts</span>
+                    <i class="bi bi-person-gear"></i><span>{{ "Staff Accounts"|school_translate }}</span>
                 </a>
 
-                <div class="sidebar-group">Academics</div>
+                <div class="sidebar-group">{{ "Academics"|school_translate }}</div>
                 <a class="nav-link {% if 'departments' in request.path %}active{% endif %}" href="{% url 'academics:department_list' %}">
-                    <i class="bi bi-diagram-3"></i><span>Departments</span>
+                    <i class="bi bi-diagram-3"></i><span>{{ "Departments"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/classes/' in request.path %}active{% endif %}" href="{% url 'academics:class_list' %}">
-                    <i class="bi bi-door-open"></i><span>Classes</span>
+                    <i class="bi bi-door-open"></i><span>{{ "Classes"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/subjects/' in request.path %}active{% endif %}" href="{% url 'academics:subject_list' %}">
-                    <i class="bi bi-book"></i><span>Subjects</span>
+                    <i class="bi bi-book"></i><span>{{ "Subjects"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/years/' in request.path or '/terms/' in request.path or 'enrollments' in request.path %}active{% endif %}" href="{% url 'academics:year_list' %}">
-                    <i class="bi bi-calendar3"></i><span>Academic Calendar</span>
+                    <i class="bi bi-calendar3"></i><span>{{ "Academic Calendar"|school_translate }}</span>
                 </a>
 
-                <div class="sidebar-group">Operations</div>
+                <div class="sidebar-group">{{ "Operations"|school_translate }}</div>
                 <a class="nav-link {% if '/attendance/' in request.path %}active{% endif %}" href="{% url 'attendance:list' %}">
-                    <i class="bi bi-calendar2-check"></i><span>Attendance</span>
+                    <i class="bi bi-calendar2-check"></i><span>{{ "Attendance"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/examinations/' in request.path %}active{% endif %}" href="{% url 'examinations:exam_list' %}">
-                    <i class="bi bi-clipboard2-data"></i><span>Examinations</span>
+                    <i class="bi bi-clipboard2-data"></i><span>{{ "Examinations"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/finance/payments' in request.path %}active{% endif %}" href="{% url 'finance:payment_list' %}">
-                    <i class="bi bi-cash-coin"></i><span>Payments</span>
+                    <i class="bi bi-cash-coin"></i><span>{{ "Payments"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/finance/fees' in request.path %}active{% endif %}" href="{% url 'finance:fee_list' %}">
-                    <i class="bi bi-cash-stack"></i><span>Fee Structure</span>
+                    <i class="bi bi-cash-stack"></i><span>{{ "Fee Structure"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if 'overview' in request.path %}active{% endif %}" href="{% url 'finance:financial_overview' %}">
-                    <i class="bi bi-graph-up-arrow"></i><span>Financial Overview</span>
+                    <i class="bi bi-graph-up-arrow"></i><span>{{ "Financial Overview"|school_translate }}</span>
                 </a>
-                <a class="nav-link {% if '/assignments/' in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
-                    <i class="bi bi-journal-text"></i><span>Assignments</span>
+                <a class="nav-link {% if '/assignments/' in request.path and 'quizzes' not in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
+                    <i class="bi bi-journal-text"></i><span>{{ "Assignments"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'quizzes' in request.path %}active{% endif %}" href="{% url 'assignments:quiz_list' %}">
+                    <i class="bi bi-ui-checks"></i><span>{{ "Quizzes"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/reports/' in request.path %}active{% endif %}" href="{% url 'reports:index' %}">
-                    <i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span>
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>{{ "Reports"|school_translate }}</span>
                 </a>
             {% elif user.role == 'accountant' %}
-                <div class="sidebar-group">Finance</div>
+                <div class="sidebar-group">{{ "Finance"|school_translate }}</div>
                 <a class="nav-link {% if 'payments' in request.path %}active{% endif %}" href="{% url 'finance:payment_list' %}">
-                    <i class="bi bi-receipt"></i><span>Payments</span>
+                    <i class="bi bi-receipt"></i><span>{{ "Payments"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/fees/' in request.path %}active{% endif %}" href="{% url 'finance:fee_list' %}">
-                    <i class="bi bi-cash-stack"></i><span>Fee Structure</span>
+                    <i class="bi bi-cash-stack"></i><span>{{ "Fee Structure"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if 'overview' in request.path %}active{% endif %}" href="{% url 'finance:financial_overview' %}">
-                    <i class="bi bi-graph-up-arrow"></i><span>Financial Overview</span>
+                    <i class="bi bi-graph-up-arrow"></i><span>{{ "Financial Overview"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/students/' in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
-                    <i class="bi bi-people"></i><span>Students</span>
+                    <i class="bi bi-people"></i><span>{{ "Students"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/reports/' in request.path %}active{% endif %}" href="{% url 'reports:index' %}">
-                    <i class="bi bi-file-earmark-bar-graph"></i><span>Reports</span>
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>{{ "Reports"|school_translate }}</span>
+                </a>
+            {% elif user.role == 'registrar' %}
+                <div class="sidebar-group">{{ "Registrar"|school_translate }}</div>
+                <a class="nav-link {% if '/students/' in request.path and 'parents' not in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
+                    <i class="bi bi-people-fill"></i><span>{{ "Student Records"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'archived' in request.path %}active{% endif %}" href="{% url 'students:archived_students' %}">
+                    <i class="bi bi-archive"></i><span>{{ "Archived Students"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'readmission/requests' in request.path %}active{% endif %}" href="{% url 'students:readmission_request_list' %}">
+                    <i class="bi bi-arrow-repeat"></i><span>Re-admission Requests</span>
+                </a>
+                <a class="nav-link {% if '/parents/' in request.path %}active{% endif %}" href="{% url 'students:parent_list' %}">
+                    <i class="bi bi-person-heart"></i><span>{{ "Parents / Guardians"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'enrollments' in request.path %}active{% endif %}" href="{% url 'academics:enrollment_list' %}">
+                    <i class="bi bi-calendar-check"></i><span>{{ "Enrollments"|school_translate }}</span>
                 </a>
             {% elif user.role == 'teacher' %}
-                <div class="sidebar-group">Teaching</div>
+                <div class="sidebar-group">{{ "Teaching"|school_translate }}</div>
                 <a class="nav-link {% if '/subjects/' in request.path %}active{% endif %}" href="{% url 'academics:subject_list' %}">
-                    <i class="bi bi-book"></i><span>My Subjects</span>
+                    <i class="bi bi-book"></i><span>{{ "My Subjects"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/students/' in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
-                    <i class="bi bi-people"></i><span>Students</span>
+                    <i class="bi bi-people"></i><span>{{ "Students"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/attendance/' in request.path %}active{% endif %}" href="{% url 'attendance:list' %}">
-                    <i class="bi bi-calendar2-check"></i><span>Attendance</span>
+                    <i class="bi bi-calendar2-check"></i><span>{{ "Attendance"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/examinations/' in request.path %}active{% endif %}" href="{% url 'examinations:exam_list' %}">
-                    <i class="bi bi-clipboard2-data"></i><span>Examinations</span>
+                    <i class="bi bi-clipboard2-data"></i><span>{{ "Examinations"|school_translate }}</span>
                 </a>
-                <a class="nav-link {% if '/assignments/' in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
-                    <i class="bi bi-journal-text"></i><span>Assignments</span>
+                <a class="nav-link {% if '/assignments/' in request.path and 'quizzes' not in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
+                    <i class="bi bi-journal-text"></i><span>{{ "Assignments"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'quizzes' in request.path %}active{% endif %}" href="{% url 'assignments:quiz_list' %}">
+                    <i class="bi bi-ui-checks"></i><span>{{ "My Quizzes"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if 'class-performance' in request.path %}active{% endif %}" href="{% url 'reports:class_performance' %}">
-                    <i class="bi bi-bar-chart"></i><span>Class Performance</span>
+                    <i class="bi bi-bar-chart"></i><span>{{ "Class Performance"|school_translate }}</span>
                 </a>
             {% elif user.role == 'student' %}
-                <div class="sidebar-group">My Academics</div>
+                <div class="sidebar-group">{{ "My Academics"|school_translate }}</div>
                 <a class="nav-link {% if 'result' in request.path %}active{% endif %}" href="{% url 'examinations:result_list' %}">
-                    <i class="bi bi-award"></i><span>My Results</span>
+                    <i class="bi bi-award"></i><span>{{ "My Results"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if '/attendance/' in request.path %}active{% endif %}" href="{% url 'attendance:list' %}">
-                    <i class="bi bi-calendar2-check"></i><span>My Attendance</span>
+                    <i class="bi bi-calendar2-check"></i><span>{{ "My Attendance"|school_translate }}</span>
                 </a>
-                <a class="nav-link {% if '/assignments/' in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
-                    <i class="bi bi-journal-text"></i><span>Assignments</span>
+                <a class="nav-link {% if '/assignments/' in request.path and 'quizzes' not in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
+                    <i class="bi bi-journal-text"></i><span>{{ "Assignments"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'quizzes' in request.path %}active{% endif %}" href="{% url 'assignments:quiz_list' %}">
+                    <i class="bi bi-ui-checks"></i><span>{{ "Quizzes"|school_translate }}</span>
                 </a>
                 {% if student_profile %}
                 <a class="nav-link {% if 'statement' in request.path %}active{% endif %}" href="{% url 'finance:fee_statement' student_profile.id %}">
-                    <i class="bi bi-wallet2"></i><span>Fee Statement</span>
+                    <i class="bi bi-wallet2"></i><span>{{ "Fee Statement"|school_translate }}</span>
                 </a>
                 {% endif %}
             {% elif user.role == 'parent' %}
-                <div class="sidebar-group">My Children</div>
+                <div class="sidebar-group">{{ "My Children"|school_translate }}</div>
                 <a class="nav-link {% if '/attendance/' in request.path %}active{% endif %}" href="{% url 'attendance:list' %}">
-                    <i class="bi bi-calendar2-check"></i><span>Attendance</span>
+                    <i class="bi bi-calendar2-check"></i><span>{{ "Attendance"|school_translate }}</span>
                 </a>
                 <a class="nav-link {% if 'result' in request.path %}active{% endif %}" href="{% url 'examinations:result_list' %}">
-                    <i class="bi bi-award"></i><span>Results</span>
+                    <i class="bi bi-award"></i><span>{{ "Results"|school_translate }}</span>
                 </a>
-                <a class="nav-link {% if '/assignments/' in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
-                    <i class="bi bi-journal-text"></i><span>Assignments</span>
+                <a class="nav-link {% if '/assignments/' in request.path and 'quizzes' not in request.path %}active{% endif %}" href="{% url 'assignments:list' %}">
+                    <i class="bi bi-journal-text"></i><span>{{ "Assignments"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if 'quizzes' in request.path %}active{% endif %}" href="{% url 'assignments:quiz_list' %}">
+                    <i class="bi bi-ui-checks"></i><span>{{ "Quizzes"|school_translate }}</span>
                 </a>
             {% endif %}
 
-            <div class="sidebar-group">Communication</div>
+            <div class="sidebar-group">{{ "Communication"|school_translate }}</div>
             <a class="nav-link {% if 'announcements' in request.path %}active{% endif %}" href="{% url 'communications:announcement_list' %}">
-                <i class="bi bi-megaphone"></i><span>Announcements</span>
+                <i class="bi bi-megaphone"></i><span>{{ "Announcements"|school_translate }}</span>
             </a>
             <a class="nav-link {% if 'notifications' in request.path %}active{% endif %}" href="{% url 'communications:notification_list' %}">
-                <i class="bi bi-bell"></i><span>Notifications</span>
+                <i class="bi bi-bell"></i><span>{{ "Notifications"|school_translate }}</span>
                 {% if unread_notifications %}<span class="badge bg-danger ms-auto">{{ unread_notifications }}</span>{% endif %}
             </a>
             <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{% url 'accounts:profile' %}">
-                <i class="bi bi-person-circle"></i><span>My Profile</span>
+                <i class="bi bi-person-circle"></i><span>{{ "My Profile"|school_translate }}</span>
             </a>
             {% if user.is_superuser or user.role == 'admin' %}
             <a class="nav-link" href="/admin/">
-                <i class="bi bi-shield-lock"></i><span>Django Admin</span>
+                <i class="bi bi-shield-lock"></i><span>{{ "Django Admin"|school_translate }}</span>
             </a>
             {% endif %}
         </nav>
 
         <div class="sidebar-footer">
-            <span>{{ school_motto }}</span>
+            <span>{{ school_motto|school_translate }}</span>
         </div>
     </aside>
 
     <div class="main-area">
         <header class="topbar">
-            <button class="btn icon-btn d-lg-none" id="sidebarToggle" aria-label="Open menu">
+            <button class="btn icon-btn d-lg-none" id="sidebarToggle" aria-label="{{ 'Open menu'|school_translate }}">
                 <i class="bi bi-list"></i>
             </button>
             <div class="topbar-title">
@@ -181,6 +216,21 @@
                 <p>{% now "l, j F Y" %}</p>
             </div>
             <div class="topbar-actions">
+                <form method="post" action="{% url 'set_language' %}" class="language-switcher">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <label class="visually-hidden" for="site-language">{{ "Language"|school_translate }}</label>
+                    <select id="site-language" name="language" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% get_current_language as CURRENT_LANGUAGE %}
+                        {% get_available_languages as AVAILABLE_LANGUAGES %}
+                        {% for language_code, language_name in AVAILABLE_LANGUAGES %}
+                        <option value="{{ language_code }}" {% if language_code == CURRENT_LANGUAGE %}selected{% endif %}>{{ language_name }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <button class="btn icon-btn" id="themeToggle" type="button" aria-label="{{ 'Switch to dark theme'|school_translate }}">
+                    <i class="bi bi-moon-stars" aria-hidden="true"></i>
+                </button>
                 <a href="{% url 'communications:notification_list' %}" class="icon-btn position-relative" title="Notifications">
                     <i class="bi bi-bell"></i>
                     {% if unread_notifications %}<span class="notification-dot">{{ unread_notifications }}</span>{% endif %}
@@ -251,6 +301,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="{% static 'js/app.js' %}"></script>
+<script src="{% static 'js/theme.js' %}?v=1"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

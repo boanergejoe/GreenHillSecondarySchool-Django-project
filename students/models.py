@@ -76,6 +76,13 @@ class Student(models.Model):
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.ACTIVE
     )
+    is_archived = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='archived_students',
+    )
+    archived_user_was_active = models.BooleanField(default=True)
     address = models.TextField(blank=True)
     guardian_name = models.CharField(max_length=120, blank=True)
     guardian_phone = models.CharField(max_length=30, blank=True)
@@ -120,3 +127,49 @@ class Student(models.Model):
 
     def get_absolute_url(self):
         return reverse('students:student_detail', args=[self.pk])
+
+
+class ReadmissionRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending review'
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name='readmission_requests'
+    )
+    pending_student = models.OneToOneField(
+        Student, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='pending_readmission_request',
+    )
+    school_class = models.ForeignKey(
+        'academics.SchoolClass', on_delete=models.PROTECT,
+        related_name='readmission_requests',
+    )
+    terms = models.JSONField(default=list)
+    message = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reviewed_readmission_requests',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewer_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.student} — {self.get_status_display()}'
+
+    def save(self, *args, **kwargs):
+        self.pending_student_id = (
+            self.student_id if self.status == self.Status.PENDING else None
+        )
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            kwargs['update_fields'] = set(update_fields) | {'pending_student'}
+        super().save(*args, **kwargs)

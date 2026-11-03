@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import date
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -16,7 +16,7 @@ from .forms import ProfileForm, StaffForm, StyledLoginForm
 from .mixins import RoleRequiredMixin, role_required
 from .models import User
 from academics.access import teacher_classes, teacher_subjects
-from finance.services import fee_totals_for_student
+from finance.services import exam_eligibility_for_student, fee_totals_for_student
 from school.generic import RequiredCreateFieldsMixin
 
 
@@ -27,51 +27,72 @@ class SchoolLoginView(LoginView):
 
 
 def _month_series(queryset, date_field, value_field='amount', months=6):
-    start = timezone.localdate().replace(day=1) - timedelta(days=155)
+    today = timezone.localdate()
+    current_month = today.year * 12 + today.month - 1
+    month_dates = []
+    for offset in range(months - 1, -1, -1):
+        year, month = divmod(current_month - offset, 12)
+        month_dates.append(date(year, month + 1, 1))
+
     rows = (
-        queryset.filter(**{f'{date_field}__gte': start})
+        queryset.filter(
+            **{
+                f'{date_field}__gte': month_dates[0],
+                f'{date_field}__lt': date(
+                    today.year + (today.month == 12),
+                    1 if today.month == 12 else today.month + 1,
+                    1,
+                ),
+            }
+        )
         .annotate(month=TruncMonth(date_field))
         .values('month')
         .annotate(total=Sum(value_field))
         .order_by('month')
     )
-    labels, values = [], []
+    totals = {}
     for row in rows:
         if row['month']:
-            labels.append(row['month'].strftime('%b %Y'))
-            values.append(float(row['total'] or 0))
+            month = row['month']
+            totals[(month.year, month.month)] = float(row['total'] or 0)
+    labels = [month.strftime('%b %Y') for month in month_dates]
+    values = [
+        totals.get((month.year, month.month), 0)
+        for month in month_dates
+    ]
     return labels, values
 
 
 def _finance_snapshot():
     from finance.models import Fee, Payment
+    from academics.models import AcademicYear
 
-    current_year = None
-    try:
-        from academics.models import AcademicYear
+    current_year = AcademicYear.objects.filter(is_current=True).first()
 
-        current_year = AcademicYear.objects.filter(is_current=True).first()
-    except Exception:
-        pass
-
-    fees = Fee.objects.all()
+    fees = Fee.objects.filter(is_active=True)
     if current_year:
         fees = fees.filter(Q(academic_year=current_year) | Q(academic_year__isnull=True))
 
     expected = 0
     from students.models import Student
 
-    active_students = Student.objects.filter(status=Student.Status.ACTIVE).count()
+    active_students = Student.objects.filter(
+        status=Student.Status.ACTIVE, is_archived=False
+    ).count()
     for fee in fees.select_related('school_class'):
         if fee.school_class_id:
             count = Student.objects.filter(
-                school_class=fee.school_class, status=Student.Status.ACTIVE
+                school_class=fee.school_class,
+                status=Student.Status.ACTIVE,
+                is_archived=False,
             ).count()
         else:
             count = active_students
         expected += float(fee.amount) * count
 
-    collected = Payment.objects.aggregate(total=Sum('amount'))['total'] or 0
+    collected = Payment.objects.filter(
+        fee__in=fees
+    ).aggregate(total=Sum('amount'))['total'] or 0
     collected = float(collected)
     return {
         'expected_fees': expected,
@@ -105,7 +126,10 @@ def _admin_dashboard_context():
 
     by_class = (
         SchoolClass.objects.annotate(
-            total=Count('students', filter=Q(students__status=Student.Status.ACTIVE))
+            total=Count('students', filter=Q(
+                students__status=Student.Status.ACTIVE,
+                students__is_archived=False,
+            ))
         )
         .order_by('-total')
         .values('name', 'total')[:8]
@@ -121,14 +145,16 @@ def _admin_dashboard_context():
         .order_by('-payment_date', '-created_at')[:6]
     )
     recent_students = (
-        Student.objects.select_related('user', 'school_class')
+        Student.objects.filter(is_archived=False).select_related('user', 'school_class')
         .order_by('-created_at')[:6]
     )
     announcements = Announcement.objects.filter(is_published=True).order_by('-created_at')[:5]
 
     return {
-        'total_students': Student.objects.count(),
-        'active_students': Student.objects.filter(status=Student.Status.ACTIVE).count(),
+        'total_students': Student.objects.filter(is_archived=False).count(),
+        'active_students': Student.objects.filter(
+            status=Student.Status.ACTIVE, is_archived=False
+        ).count(),
         'total_teachers': Teacher.objects.count(),
         'total_classes': SchoolClass.objects.count(),
         'total_subjects': Subject.objects.count(),
@@ -159,10 +185,14 @@ def _teacher_dashboard_context(user):
     if not teacher:
         return {'profile_missing': 'No teacher profile is linked to your account.'}
 
-    subjects = teacher_subjects(user).prefetch_related('school_classes')
+    subjects = teacher_subjects(user).select_related(
+        'academic_year', 'teacher'
+    ).prefetch_related('school_classes')
     classes = teacher_classes(user)
     students = Student.objects.filter(
-        school_class__in=classes, status=Student.Status.ACTIVE
+        school_class__in=classes,
+        status=Student.Status.ACTIVE,
+        is_archived=False,
     ).select_related('user', 'school_class')
 
     attendance_qs = Attendance.objects.filter(recorded_by=user)
@@ -205,7 +235,7 @@ def _student_dashboard_context(user):
     from attendance.models import Attendance
     from communications.models import Announcement
     from examinations.models import Examination
-    from students.models import Student
+    from students.models import ReadmissionRequest, Student
 
     student = Student.objects.select_related(
         'school_class', 'department'
@@ -229,6 +259,11 @@ def _student_dashboard_context(user):
     expected, paid, balance = (
         float(value) for value in fee_totals_for_student(student)
     )
+    eligibility = exam_eligibility_for_student(student)
+    eligibility_progress = (
+        min(100, round(float(eligibility['paid'] / eligibility['expected'] * 100)))
+        if eligibility['expected'] else 0
+    )
 
     report_cards = Examination.objects.filter(
         results__student=student, is_published=True
@@ -244,6 +279,9 @@ def _student_dashboard_context(user):
         audience__in=[Announcement.Audience.ALL, Announcement.Audience.STUDENTS],
         is_published=True,
     ).order_by('-created_at')[:5]
+    latest_readmission_request = student.readmission_requests.order_by(
+        '-created_at'
+    ).first()
 
     return {
         'student': student,
@@ -257,6 +295,9 @@ def _student_dashboard_context(user):
         'fee_expected': f'{expected:,.2f}',
         'fee_paid': f'{paid:,.2f}',
         'fee_balance': f'{balance:,.2f}',
+        'exam_eligibility': eligibility,
+        'exam_eligibility_progress': eligibility_progress,
+        'readmission_request': latest_readmission_request,
         'assignments': assignments,
         'announcements': announcements,
         'attendance_labels': json.dumps(['Present', 'Absent', 'Late', 'Excused']),
@@ -269,6 +310,32 @@ def _student_dashboard_context(user):
     }
 
 
+def _registrar_dashboard_context():
+    from academics.models import AcademicYear
+    from students.models import ReadmissionRequest, Student
+
+    return {
+        'registrar_active_count': Student.objects.filter(
+            is_archived=False, status=Student.Status.ACTIVE
+        ).count(),
+        'registrar_archived_count': Student.objects.filter(is_archived=True).count(),
+        'registrar_current_year': AcademicYear.objects.filter(
+            is_current=True
+        ).first(),
+        'registrar_recent_students': Student.objects.filter(
+            is_archived=False
+        ).select_related('user', 'school_class').order_by('-created_at')[:8],
+        'registrar_pending_readmissions': ReadmissionRequest.objects.filter(
+            status=ReadmissionRequest.Status.PENDING
+        ).select_related(
+            'student__user', 'student__school_class', 'school_class'
+        ).order_by('created_at')[:5],
+        'registrar_pending_readmission_count': ReadmissionRequest.objects.filter(
+            status=ReadmissionRequest.Status.PENDING
+        ).count(),
+    }
+
+
 def _parent_dashboard_context(user):
     from attendance.models import Attendance
     from students.models import Student
@@ -277,7 +344,9 @@ def _parent_dashboard_context(user):
     if not parent:
         return {'profile_missing': 'No parent profile is linked to your account.'}
 
-    children = Student.objects.filter(parent=parent).select_related('user', 'school_class')
+    children = Student.objects.filter(
+        parent=parent, is_archived=False
+    ).select_related('user', 'school_class')
     child_rows = []
     for child in children:
         attendance = Attendance.objects.filter(student=child)
@@ -309,6 +378,9 @@ def dashboard(request):
     if user.is_super_admin or user.role == User.Role.ACCOUNTANT:
         context.update(_admin_dashboard_context())
         context['dashboard_type'] = 'admin' if user.is_super_admin else 'accountant'
+    elif user.role == User.Role.REGISTRAR:
+        context.update(_registrar_dashboard_context())
+        context['dashboard_type'] = 'registrar'
     elif user.role == User.Role.TEACHER:
         context.update(_teacher_dashboard_context(user))
         context['dashboard_type'] = 'teacher'
@@ -381,6 +453,7 @@ class StaffListView(RoleRequiredMixin, ListView):
                 (User.Role.ADMIN, 'Super Administrator'),
                 (User.Role.TEACHER, 'Teacher / Lecturer'),
                 (User.Role.ACCOUNTANT, 'Accountant'),
+                (User.Role.REGISTRAR, 'Registrar'),
             ],
         })
         return context

@@ -3,9 +3,20 @@ from django.db import transaction
 
 from accounts.forms import BootstrapFormMixin, UserAccountFormMixin
 from accounts.models import User
-from academics.models import Department, Enrollment, SchoolClass, Term
+from academics.models import AcademicYear, Department, Enrollment, SchoolClass, Term
 
-from .models import Parent, Student
+from .models import Parent, ReadmissionRequest, Student
+
+
+class SchoolClassSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(
+            name, value, label, selected, index, subindex=subindex, attrs=attrs
+        )
+        school_class = getattr(value, 'instance', None)
+        if school_class:
+            option['attrs']['data-level'] = school_class.level
+        return option
 
 
 class ParentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
@@ -40,6 +51,7 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
             'guardian_phone', 'blood_group', 'medical_notes',
         ]
         widgets = {
+            'school_class': SchoolClassSelect(),
             'admission_date': forms.DateInput(attrs={'type': 'date'}),
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
             'address': forms.Textarea(attrs={'rows': 2}),
@@ -47,17 +59,26 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        if self.user and self.user.role == User.Role.REGISTRAR:
+            self.fields.pop('blood_group')
+            self.fields.pop('medical_notes')
         self.fields['student_id'].help_text = 'Leave blank to generate automatically.'
         self.fields['parent'].queryset = Parent.objects.select_related('user')
-        self.fields['department'].required = True
-        self.fields['blood_group'].help_text = (
-            'Collected for emergency care; only administrators and accountants can view it.'
+        self.fields['department'].required = False
+        self.fields['department'].help_text = (
+            'Senior 1 and Senior 2 are neutral and do not use departments. '
+            'Select a department for Senior 3 and Senior 4.'
         )
-        self.fields['medical_notes'].help_text = (
-            'Record only health information needed for student safety. Access is limited '
-            'to administrators and accountants.'
-        )
+        if 'blood_group' in self.fields:
+            self.fields['blood_group'].help_text = (
+                'Collected for emergency care; only administrators and accountants can view it.'
+            )
+            self.fields['medical_notes'].help_text = (
+                'Record only health information needed for student safety. Access is limited '
+                'to administrators and accountants.'
+            )
         self.fields['school_class'].queryset = SchoolClass.objects.select_related(
             'academic_year'
         ).order_by('name')
@@ -122,3 +143,83 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
                     },
                 )
         return student
+
+    def clean(self):
+        cleaned = super().clean()
+        school_class = cleaned.get('school_class')
+        department = cleaned.get('department')
+        if school_class and school_class.level in (
+            SchoolClass.Level.SENIOR_3, SchoolClass.Level.SENIOR_4
+        ):
+            if not department:
+                self.add_error('department', 'Select the student department for this class.')
+            elif school_class.department_id != department.pk:
+                self.add_error(
+                    'department',
+                    'The department must match the selected class.',
+                )
+        elif school_class:
+            cleaned['department'] = None
+        return cleaned
+
+
+class ReadmissionForm(BootstrapFormMixin, forms.Form):
+    school_class = forms.ModelChoiceField(
+        queryset=SchoolClass.objects.select_related('academic_year').order_by(
+            '-academic_year__start_date', 'name'
+        ),
+    )
+    terms = forms.MultipleChoiceField(
+        choices=Term.Name.choices,
+        widget=forms.CheckboxSelectMultiple(),
+    )
+    admission_date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        school_class = cleaned.get('school_class')
+        terms = cleaned.get('terms')
+        if school_class and not terms:
+            self.add_error('terms', 'Select at least one term for re-admission.')
+        return cleaned
+
+
+class StudentReadmissionRequestForm(BootstrapFormMixin, forms.ModelForm):
+    terms = forms.MultipleChoiceField(
+        choices=Term.Name.choices,
+        widget=forms.CheckboxSelectMultiple(),
+    )
+
+    class Meta:
+        model = ReadmissionRequest
+        fields = ['school_class', 'terms', 'message']
+        widgets = {
+            'message': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        current_year = AcademicYear.objects.filter(is_current=True).first()
+        classes = SchoolClass.objects.select_related(
+            'academic_year'
+        ).order_by('name')
+        self.fields['school_class'].queryset = (
+            classes.filter(academic_year=current_year)
+            if current_year else classes.none()
+        )
+        self.fields['message'].required = False
+
+    def clean_terms(self):
+        terms = self.cleaned_data['terms']
+        if not terms:
+            raise forms.ValidationError('Select at least one term.')
+        return terms
+
+    def save(self, commit=True):
+        request = super().save(commit=False)
+        request.terms = self.cleaned_data['terms']
+        if commit:
+            request.save()
+        return request

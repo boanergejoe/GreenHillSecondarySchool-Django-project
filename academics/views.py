@@ -1,5 +1,6 @@
 from django.urls import reverse_lazy
 
+from .access import teacher_subjects
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
 
 from .forms import (
@@ -198,7 +199,9 @@ class SubjectListView(BaseListView):
         ).prefetch_related('departments')
         qs = qs.prefetch_related('school_classes')
         if self.request.user.role == 'teacher':
-            qs = qs.filter(teacher=self.request.user)
+            qs = teacher_subjects(self.request.user).select_related(
+                'teacher', 'academic_year'
+            ).prefetch_related('departments', 'school_classes')
         return qs
 
 
@@ -228,7 +231,7 @@ class SubjectDeleteView(BaseDeleteView):
 class EnrollmentListView(BaseListView):
     model = Enrollment
     page_title = 'Enrollments'
-    allowed_roles = ('teacher', 'accountant')
+    allowed_roles = ('teacher', 'accountant', 'registrar')
     search_fields = ['student__user__first_name', 'student__student_id']
     columns = [
         ('Student', 'student.user.display_name'), ('Student ID', 'student.student_id'),
@@ -248,6 +251,7 @@ class EnrollmentCreateView(BaseCreateView):
     page_title = 'Add Enrollment'
     success_url = reverse_lazy('academics:enrollment_list')
     cancel_url_name = 'academics:enrollment_list'
+    allowed_roles = ('registrar', 'accountant')
 
 
 class EnrollmentUpdateView(BaseUpdateView):
@@ -256,6 +260,7 @@ class EnrollmentUpdateView(BaseUpdateView):
     page_title = 'Edit Enrollment'
     success_url = reverse_lazy('academics:enrollment_list')
     cancel_url_name = 'academics:enrollment_list'
+    allowed_roles = ('registrar', 'accountant')
 
 
 class EnrollmentDeleteView(BaseDeleteView):
@@ -263,3 +268,4 @@ class EnrollmentDeleteView(BaseDeleteView):
     page_title = 'Delete Enrollment'
     success_url = reverse_lazy('academics:enrollment_list')
     cancel_url_name = 'academics:enrollment_list'
+    allowed_roles = ('registrar', 'accountant')

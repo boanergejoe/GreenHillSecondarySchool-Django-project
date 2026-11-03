@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Take {{ quiz.title }}{% endblock %}
+{% block page_heading %}Take Quiz{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ quiz.title }}</h3><p>{{ quiz.subject.name }} · {{ questions|length }} questions</p></div>
+    <a href="{% url 'assignments:quiz_detail' quiz.pk %}" class="btn btn-outline-secondary">Cancel</a>
+</div>
+<div class="alert alert-warning">You can submit this quiz once. Your multiple-choice responses are graded automatically.</div>
+<form method="post">
+    {% csrf_token %}
+    {% for question in questions %}
+    <fieldset class="card mb-3">
+        <legend class="card-header fs-6">{{ forloop.counter }}. {{ question.prompt }}</legend>
+        <div class="card-body">
+            {% for option in question.options %}
+            <label class="d-flex align-items-start gap-2 py-2">
+                <input class="form-check-input mt-1" type="radio" name="question_{{ question.pk }}" value="{{ forloop.counter0 }}" required>
+                <span>{{ option }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+    {% empty %}
+    <div class="alert alert-danger">This quiz has no questions and cannot be submitted.</div>
+    {% endfor %}
+    {% if questions %}
+    <button type="submit" class="btn btn-primary">Submit answers</button>
+    {% endif %}
+</form>
+{% endblock %}

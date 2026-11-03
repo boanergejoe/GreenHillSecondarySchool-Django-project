@@ -57,11 +57,13 @@ class StaffForm(BootstrapFormMixin, forms.ModelForm):
             self.fields['role'].choices = [
                 (User.Role.ADMIN, 'Super Administrator'),
                 (User.Role.ACCOUNTANT, 'Accountant'),
+                (User.Role.REGISTRAR, 'Registrar'),
             ]
         else:
             self.fields['role'].choices = [
                 (User.Role.ADMIN, 'Super Administrator'),
                 (User.Role.ACCOUNTANT, 'Accountant'),
+                (User.Role.REGISTRAR, 'Registrar'),
                 (User.Role.TEACHER, 'Teacher / Lecturer'),
             ]
 

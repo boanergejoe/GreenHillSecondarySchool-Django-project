@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.db.models import Sum
 
 from accounts.mixins import user_has_role
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
@@ -137,6 +138,60 @@ class PaymentCreateView(BaseCreateView):
     def form_valid(self, form):
         form.instance.recorded_by = self.request.user
         return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from academics.models import AcademicYear
+
+        students = Student.objects.select_related(
+            'user', 'school_class', 'school_class__academic_year'
+        ).filter(is_archived=False).order_by(
+            'user__first_name', 'user__last_name'
+        )
+        fees = list(Fee.objects.filter(is_active=True).select_related(
+            'school_class', 'academic_year'
+        ))
+        current_year_id = AcademicYear.objects.filter(
+            is_current=True
+        ).values_list('pk', flat=True).first()
+        paid_by_student_fee = {
+            (row['student_id'], row['fee_id']): row['total']
+            for row in Payment.objects.filter(
+                fee__is_active=True
+            ).values('student_id', 'fee_id').annotate(total=Sum('amount'))
+        }
+        student_fees = {}
+        for student in students:
+            year_id = (
+                student.school_class.academic_year_id
+                if student.school_class_id else current_year_id
+            )
+            applicable_fees = []
+            for fee in fees:
+                if fee.academic_year_id != year_id:
+                    continue
+                if fee.school_class_id and fee.school_class_id != student.school_class_id:
+                    continue
+                paid = paid_by_student_fee.get((student.pk, fee.pk), 0)
+                due = max(fee.amount - paid, 0)
+                applicable_fees.append({
+                    'id': fee.pk,
+                    'name': fee.name,
+                    'term': fee.term,
+                    'amount': str(due),
+                    'total': str(fee.amount),
+                    'due_date': fee.due_date.isoformat() if fee.due_date else '',
+                })
+            student_fees[str(student.pk)] = {
+                'class_name': student.school_class.name if student.school_class_id else '',
+                'academic_year': (
+                    student.school_class.academic_year.name
+                    if student.school_class_id else ''
+                ),
+                'fees': applicable_fees,
+            }
+        context['payment_auto_fill_data'] = student_fees
+        return context
 
 
 class PaymentUpdateView(BaseUpdateView):

@@ -23,6 +23,69 @@
     --nav-height: 78px;
 }
 
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #e7eee9;
+    --muted: #a4b4aa;
+    --soft: #17211b;
+    --line: rgba(231, 238, 233, .14);
+    --white: #111814;
+    --shadow-sm: 0 8px 24px rgba(0, 0, 0, .24);
+    --shadow-md: 0 20px 55px rgba(0, 0, 0, .32);
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .site-nav,
+html[data-theme="dark"] .school-term-card,
+html[data-theme="dark"] .school-news-card,
+html[data-theme="dark"] .school-empty-note,
+html[data-theme="dark"] .gallery-item,
+html[data-theme="dark"] .cookie-banner {
+    background-color: var(--white);
+    color: var(--ink);
+}
+
+html[data-theme="dark"] .school-intro,
+html[data-theme="dark"] .school-section,
+html[data-theme="dark"] .school-gallery-section,
+html[data-theme="dark"] .school-news-section,
+html[data-theme="dark"] .school-assistant-section {
+    background-color: #151d19;
+    color: var(--ink);
+}
+
+html[data-theme="dark"] .school-assistant-panel,
+html[data-theme="dark"] .school-assistant-answer {
+    background: var(--white);
+    color: var(--ink);
+    border-color: var(--line);
+}
+
+html[data-theme="dark"] .school-assistant-controls input {
+    background: #151d19;
+    color: var(--ink);
+    border-color: var(--line);
+}
+
+html[data-theme="dark"] .site-nav {
+    border-color: var(--line);
+}
+
+html[dir="rtl"] body { direction: rtl; }
+html[dir="rtl"] .brand-copy,
+html[dir="rtl"] .hero-copy,
+html[dir="rtl"] .section-heading { text-align: right; }
+.btn-nav-theme {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+}
+
 *,
 *::before,
 *::after {
@@ -3531,6 +3594,52 @@ p {
     background: #ffffff;
 }
 
+.school-assistant-section {
+    background: #f5f8f5;
+}
+
+.school-assistant-panel {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+}
+
+.school-assistant-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.school-assistant-controls input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid #c8d9cc;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #173c26;
+}
+
+.school-assistant-panel small {
+    display: block;
+    margin-top: 10px;
+    color: var(--muted);
+}
+
+.school-assistant-answer {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f4f8f5;
+    color: var(--ink);
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
 .school-gallery-section .gallery-item > img {
     width: 100%;
     height: 100%;
@@ -3612,6 +3721,14 @@ p {
     }
 
     .school-admissions-actions .btn {
+        width: 100%;
+    }
+
+    .school-assistant-controls {
+        flex-direction: column;
+    }
+
+    .school-assistant-controls .btn {
         width: 100%;
     }
 }

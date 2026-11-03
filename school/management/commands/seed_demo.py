@@ -52,6 +52,10 @@ class Command(BaseCommand):
             'accountant', 'Account@12345', User.Role.ACCOUNTANT,
             'Mary', 'Achol', 'accounts@greenhillss.edu.ss',
         )
+        self._user(
+            'registrar', 'Registrar@12345', User.Role.REGISTRAR,
+            'School', 'Registrar', 'registrar@greenhillss.edu.ss',
+        )
 
         year, _ = AcademicYear.objects.update_or_create(
             name='2026',
@@ -547,6 +551,7 @@ class Command(BaseCommand):
         self.stdout.write('Login accounts:')
         self.stdout.write('  admin / Admin@12345')
         self.stdout.write('  accountant / Account@12345')
+        self.stdout.write('  registrar / Registrar@12345')
         self.stdout.write('  teacher1 / Teacher@12345')
         self.stdout.write('  student1 / Student@12345')
         self.stdout.write('  parent1 / Parent@12345')

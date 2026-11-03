@@ -1,10 +1,14 @@
+from decimal import Decimal
+
 from django import forms
+from django.db.models import Q, Sum
 
 from academics.models import AcademicYear, SchoolClass
 from accounts.forms import BootstrapFormMixin
 from students.models import Student
 
 from .models import Fee, Payment
+from .services import active_fees_for_student
 
 
 DATE_WIDGET = forms.DateInput(attrs={'type': 'date'})
@@ -52,10 +56,64 @@ class PaymentForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['student'].queryset = Student.objects.select_related(
             'user', 'school_class'
-        ).order_by('user__first_name', 'user__last_name')
-        self.fields['fee'].queryset = Fee.objects.select_related(
+        ).filter(is_archived=False).order_by('user__first_name', 'user__last_name')
+        self.fields['fee'].required = True
+        self.fields['amount'].min_value = Decimal('0.01')
+        fee_queryset = Fee.objects.select_related(
             'school_class', 'academic_year'
-        ).order_by('-academic_year__start_date', 'name')
+        )
+        selected_student_id = (
+            self.data.get('student') if self.is_bound
+            else self.initial.get('student', self.instance.student_id)
+        )
+        selected_student = self.fields['student'].queryset.filter(
+            pk=selected_student_id
+        ).first() if selected_student_id else None
+        if selected_student:
+            fee_queryset = active_fees_for_student(selected_student)
+            if self.instance.pk and self.instance.fee_id:
+                fee_queryset = Fee.objects.filter(
+                    Q(pk__in=fee_queryset) | Q(pk=self.instance.fee_id)
+                ).select_related('school_class', 'academic_year')
+        else:
+            fee_queryset = fee_queryset.filter(is_active=True)
+        self.fields['fee'].queryset = fee_queryset.order_by(
+            '-academic_year__start_date', 'name'
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        student = cleaned.get('student')
+        fee = cleaned.get('fee')
+        amount = cleaned.get('amount')
+        if not student or not fee:
+            return cleaned
+
+        same_existing_payment = (
+            self.instance.pk
+            and self.instance.student_id == student.pk
+            and self.instance.fee_id == fee.pk
+        )
+        if not same_existing_payment and not active_fees_for_student(student).filter(
+            pk=fee.pk
+        ).exists():
+            self.add_error(
+                'fee',
+                'Select an active fee that applies to this student’s class and academic year.',
+            )
+            return cleaned
+
+        payments = Payment.objects.filter(student=student, fee=fee)
+        if self.instance.pk:
+            payments = payments.exclude(pk=self.instance.pk)
+        paid = payments.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        balance = max(fee.amount - paid, Decimal('0'))
+        if amount is not None and amount > balance:
+            self.add_error(
+                'amount',
+                f'The payment cannot exceed the remaining fee balance of {balance:,.2f}.',
+            )
+        return cleaned
 
 
 class PaymentFilterForm(BootstrapFormMixin, forms.Form):

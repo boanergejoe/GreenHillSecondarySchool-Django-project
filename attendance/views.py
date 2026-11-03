@@ -83,7 +83,9 @@ def take_attendance(request):
     if selected_class:
         school_class = get_object_or_404(classes, pk=selected_class)
         students = Student.objects.filter(
-            school_class=school_class, status=Student.Status.ACTIVE
+            school_class=school_class,
+            status=Student.Status.ACTIVE,
+            is_archived=False,
         ).select_related('user').order_by('user__first_name', 'user__last_name')
         subjects = Subject.objects.filter(school_classes=school_class)
         if user.role == 'teacher':

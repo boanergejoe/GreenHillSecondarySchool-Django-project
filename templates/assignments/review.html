@@ -28,6 +28,21 @@
         <div class="card">
             <div class="card-header"><h6>Grade &amp; Feedback</h6></div>
             <div class="card-body p-4">
+                <div class="alert alert-warning small">
+                    AI suggestions are advisory, are based only on the student's text response,
+                    and must be checked by a teacher before saving. Text is sent to the configured AI provider.
+                </div>
+                {% if suggested_grade %}
+                <div class="alert alert-info" role="status">AI suggestion loaded below. Review and edit it before saving.</div>
+                {% endif %}
+                {% if submission.comment %}
+                <form method="post" class="mb-3">
+                    {% csrf_token %}
+                    <button type="submit" name="ai_suggest" value="1" class="btn btn-outline-primary">
+                        <i class="bi bi-stars me-1"></i>Suggest score and feedback with AI
+                    </button>
+                </form>
+                {% endif %}
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}

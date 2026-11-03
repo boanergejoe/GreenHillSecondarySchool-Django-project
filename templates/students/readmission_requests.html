@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ page_title }}</h3><p>Review and approve or decline student re-admission requests.</p></div>
+    <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Dashboard</a>
+</div>
+<div class="row g-3">
+    {% for admission_request in requests %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+                    <div>
+                        <h5 class="mb-1">{{ admission_request.student.full_name }} <small class="text-muted">{{ admission_request.student.student_id }}</small></h5>
+                        <div class="text-muted">{{ admission_request.school_class.name }} · {{ admission_request.school_class.academic_year.name }} · Terms: {{ admission_request.terms|join:", " }}</div>
+                        <div class="small text-muted">Submitted {{ admission_request.created_at|date:"d M Y H:i" }} · {{ admission_request.get_status_display }}</div>
+                    </div>
+                    {% if admission_request.status == 'pending' %}
+                    <a href="{% url 'students:student_detail' admission_request.student.pk %}" class="btn btn-sm btn-outline-secondary align-self-start">Open student record</a>
+                    {% endif %}
+                </div>
+                {% if admission_request.message %}<p>{{ admission_request.message|linebreaksbr }}</p>{% endif %}
+                {% if admission_request.reviewer_note %}<p class="small text-muted">Review note: {{ admission_request.reviewer_note }}</p>{% endif %}
+                {% if admission_request.status == 'pending' %}
+                <form method="post" action="{% url 'students:readmission_request_review' admission_request.pk %}" class="d-flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="reviewer_note" class="form-control flex-grow-1" placeholder="Optional note for the student" maxlength="2000" aria-label="Optional review note">
+                    <button class="btn btn-success" name="action" value="approve" type="submit"><i class="bi bi-check-lg me-1"></i>Approve and enroll</button>
+                    <button class="btn btn-outline-danger" name="action" value="reject" type="submit"><i class="bi bi-x-lg me-1"></i>Decline</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="card"><div class="empty-state">No re-admission requests found.</div></div></div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -32,6 +32,78 @@
     --bs-focus-ring-color: rgba(28, 90, 53, .25);
 }
 
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111814;
+    --card: #1b2420;
+    --text: #e7eee9;
+    --muted: #a4b4aa;
+    --border: #35433a;
+    --blue-soft: #243b2c;
+    --bs-body-bg: #111814;
+    --bs-body-color: #e7eee9;
+    --bs-border-color: #35433a;
+    --bs-tertiary-bg: #1b2420;
+    --bs-secondary-bg: #202b25;
+    --bs-light-rgb: 32, 43, 37;
+    --bs-dark-rgb: 231, 238, 233;
+    --bs-link-color: #9bd2ae;
+    --bs-link-hover-color: #c1e6ce;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .content-area {
+    background: var(--bg);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .app-footer,
+html[data-theme="dark"] .dropdown-menu,
+html[data-theme="dark"] .modal-content {
+    background-color: var(--card);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .card-header,
+html[data-theme="dark"] .table,
+html[data-theme="dark"] .table > :not(caption) > * > *,
+html[data-theme="dark"] .list-group-item {
+    background-color: var(--card);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select,
+html[data-theme="dark"] .input-group-text {
+    background-color: #151d19;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+html[data-theme="dark"] .form-control::placeholder,
+html[data-theme="dark"] .text-muted,
+html[data-theme="dark"] .form-text {
+    color: var(--muted) !important;
+}
+
+html[data-theme="dark"] .dropdown-item,
+html[data-theme="dark"] .card-header h5,
+html[data-theme="dark"] .card-header h6 {
+    color: var(--text);
+}
+
+html[data-theme="dark"] .dropdown-item:hover {
+    background-color: #28352d;
+}
+
+.language-switcher { min-width: 105px; }
+.language-switcher .form-select { min-width: 105px; }
+
 .btn-primary {
     --bs-btn-color: #fff;
     --bs-btn-bg: #1c5a35;
@@ -337,6 +409,95 @@ a { text-decoration: none; }
 .stat-card p { color: var(--muted); margin: 0; font-size: .78rem; }
 .stat-card .trend { font-size: .72rem; font-weight: 600; }
 
+.eligibility-panel {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--navy-2);
+    border-radius: var(--radius);
+    background: var(--card);
+    box-shadow: var(--shadow);
+}
+.eligibility-panel--eligible { border-left-color: var(--success); }
+.eligibility-panel--outstanding { border-left-color: var(--warning); }
+.eligibility-panel--unavailable { border-left-color: var(--muted); }
+.eligibility-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.eligibility-panel__identity { display: flex; align-items: center; gap: .85rem; }
+.eligibility-panel__icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--blue-soft);
+    color: var(--navy-2);
+    font-size: 1.1rem;
+}
+.eligibility-panel--eligible .eligibility-panel__icon { background: #dcfce7; color: #15803d; }
+.eligibility-panel--outstanding .eligibility-panel__icon { background: #fef3c7; color: #8a6500; }
+.eligibility-panel--unavailable .eligibility-panel__icon { background: #eef2f0; color: #53675a; }
+.eligibility-panel__eyebrow {
+    color: var(--muted);
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.eligibility-panel__header h5 { color: var(--text); font-size: 1rem; font-weight: 750; }
+.eligibility-panel__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: .42rem .7rem;
+    border-radius: 999px;
+    background: #eef2f0;
+    color: #43564a;
+    font-size: .75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.eligibility-panel--eligible .eligibility-panel__badge { background: #dcfce7; color: #166534; }
+.eligibility-panel--outstanding .eligibility-panel__badge { background: #fef3c7; color: #805d00; }
+.eligibility-panel__content { padding: 1.15rem 1.25rem; }
+.eligibility-panel__content > p { max-width: 900px; color: var(--muted); }
+.eligibility-panel__summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.1rem;
+}
+.eligibility-panel__summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    padding: .75rem .85rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+}
+.eligibility-panel__summary span { color: var(--muted); font-size: .72rem; }
+.eligibility-panel__summary strong { color: var(--text); font-size: .95rem; }
+.eligibility-panel__summary .is-outstanding strong { color: var(--danger); }
+.eligibility-panel__progress { max-width: 720px; margin-bottom: 1.1rem; color: var(--muted); }
+.eligibility-panel__progress .progress { height: .55rem; background: var(--border); border-radius: 999px; }
+.eligibility-panel__progress .progress-bar { background: var(--success); border-radius: 999px; }
+.eligibility-panel--outstanding .eligibility-panel__progress .progress-bar { background: #c08b13; }
+.eligibility-panel__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-top: .9rem;
+    border-top: 1px solid var(--border);
+}
+.eligibility-panel__footer small { max-width: 680px; color: var(--muted); }
+
 .bg-soft-blue { background: #e6f2ea; color: #14472a; }
 .bg-soft-green { background: #dcfce7; color: #15803d; }
 .bg-soft-amber { background: #fef3c7; color: #a57c0a; }
@@ -560,6 +721,9 @@ a { text-decoration: none; }
     .topbar-title p { display: none; }
     .filter-bar { padding: .8rem; }
     .filter-bar .form-control, .filter-bar .form-select, .filter-bar .btn { width: 100%; }
+    .eligibility-panel__summary { grid-template-columns: 1fr; gap: .5rem; }
+    .eligibility-panel__summary > div { flex-direction: row; justify-content: space-between; align-items: center; }
+    .eligibility-panel__footer { align-items: flex-start; flex-direction: column; }
 }
 
 @media print {
