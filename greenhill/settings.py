@@ -21,23 +21,35 @@ def env_bool(name, default=False):
     return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-wxevc4^a28(u3hfq^pvr+0g)!dvqwx8jc2kf6)t2)r-t4^79-7',
-)
-
-DEBUG = env_bool('DJANGO_DEBUG', True)
-
-if not DEBUG and SECRET_KEY.startswith('django-insecure-'):
+DEBUG = env_bool('DJANGO_DEBUG', False)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if DEBUG and not SECRET_KEY:
+    SECRET_KEY = (
+        'django-insecure-wxevc4^a28(u3hfq^pvr+0g)!dvqwx8jc2kf6)t2)r-t4^79-7'
+    )
+elif not DEBUG and (
+    len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5
+    or SECRET_KEY.startswith('django-insecure-')
+):
     raise ImproperlyConfigured(
-        'Set DJANGO_SECRET_KEY to a strong, unique value when DJANGO_DEBUG=False.'
+        'Set DJANGO_SECRET_KEY to a strong, unique value of at least 50 characters '
+        'when DJANGO_DEBUG=False.'
     )
 
-ALLOWED_HOSTS = [
+_configured_allowed_hosts = [
     host.strip()
-    for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    for host in os.environ.get(
+        'DJANGO_ALLOWED_HOSTS',
+        'localhost,127.0.0.1' if DEBUG else '',
+    ).split(',')
     if host.strip()
 ]
+if not DEBUG and not _configured_allowed_hosts:
+    raise ImproperlyConfigured(
+        'Set DJANGO_ALLOWED_HOSTS to the deployed domain when DJANGO_DEBUG=False.'
+    )
+ALLOWED_HOSTS = _configured_allowed_hosts
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
@@ -182,8 +194,8 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '31536000'))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', True)
-    SECURE_HSTS_PRELOAD = env_bool('DJANGO_SECURE_HSTS_PRELOAD', True)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', False)
+    SECURE_HSTS_PRELOAD = env_bool('DJANGO_SECURE_HSTS_PRELOAD', False)
 
 # Email: defaults to console for local development; set DJANGO_EMAIL_BACKEND=smtp for production.
 EMAIL_BACKEND = os.environ.get(

@@ -1,11 +1,15 @@
 from django import forms
 from django.db import transaction
+from django.db.models import Q
 
 from accounts.forms import BootstrapFormMixin
 from accounts.models import User
 
+from .access import teacher_classes, teacher_subjects
 from .models import (
-    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
+    AcademicYear, Department, Enrollment, ExaminationSession, LessonPlan,
+    SchoolClass, Subject, SyllabusCoverage, TeacherAttendance, TeachingObservation,
+    TeachingSchedule, Term,
 )
 
 
@@ -258,4 +262,329 @@ class EnrollmentForm(BootstrapFormMixin, forms.ModelForm):
         school_class = cleaned.get('school_class')
         if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
             self.add_error('school_class', 'The class must belong to the selected academic year.')
+        return cleaned
+
+
+class SyllabusCoverageForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = SyllabusCoverage
+        fields = [
+            'academic_year', 'term', 'school_class', 'subject',
+            'topics_planned', 'topics_completed', 'notes',
+        ]
+        widgets = {
+            'term': forms.RadioSelect(),
+            'notes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['academic_year'].queryset = AcademicYear.objects.order_by(
+            '-start_date'
+        )
+        self.fields['school_class'].queryset = SchoolClass.objects.select_related(
+            'academic_year'
+        ).order_by('name')
+        self.fields['subject'].queryset = Subject.objects.select_related(
+            'academic_year'
+        ).prefetch_related('school_classes').order_by('name')
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if self.user and self.user.role == User.Role.TEACHER:
+            self.fields['school_class'].queryset = teacher_classes(
+                self.user
+            ).select_related('academic_year').order_by('name')
+            self.fields['subject'].queryset = teacher_subjects(
+                self.user
+            ).select_related('academic_year').prefetch_related(
+                'school_classes'
+            ).order_by('name')
+        else:
+            self.fields['school_class'].queryset = SchoolClass.objects.select_related(
+                'academic_year'
+            ).order_by('name')
+            self.fields['subject'].queryset = Subject.objects.select_related(
+                'academic_year'
+            ).prefetch_related('school_classes').order_by('name')
+        self.fields['academic_year'].queryset = AcademicYear.objects.order_by(
+            '-start_date'
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        subject = cleaned.get('subject')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and subject and subject.academic_year_id != academic_year.pk:
+            self.add_error('subject', 'The subject must belong to the selected academic year.')
+        if school_class and subject and not subject.school_classes.filter(
+            pk=school_class.pk
+        ).exists():
+            self.add_error('subject', 'The subject must be assigned to the selected class.')
+        if (
+            self.user and self.user.role == User.Role.TEACHER
+            and subject and not teacher_subjects(self.user).filter(
+                pk=subject.pk,
+                school_classes=school_class,
+            ).exists()
+        ):
+            self.add_error('subject', 'You are not assigned to this subject and class.')
+        return cleaned
+
+
+class LessonPlanForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = LessonPlan
+        fields = [
+            'academic_year', 'term', 'school_class', 'subject', 'lesson_date',
+            'topic', 'objectives', 'resources',
+        ]
+        widgets = {
+            'term': forms.RadioSelect(),
+            'lesson_date': DATE_WIDGET,
+            'objectives': forms.Textarea(attrs={'rows': 3}),
+            'resources': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.fields['academic_year'].queryset = AcademicYear.objects.order_by(
+            '-start_date'
+        )
+        if self.user and self.user.role == User.Role.TEACHER:
+            self.fields['school_class'].queryset = teacher_classes(
+                self.user
+            ).select_related('academic_year').order_by('name')
+            self.fields['subject'].queryset = teacher_subjects(
+                self.user
+            ).select_related('academic_year').prefetch_related(
+                'school_classes'
+            ).order_by('name')
+        else:
+            self.fields['school_class'].queryset = SchoolClass.objects.select_related(
+                'academic_year'
+            ).order_by('name')
+            self.fields['subject'].queryset = Subject.objects.select_related(
+                'academic_year'
+            ).prefetch_related('school_classes').order_by('name')
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        subject = cleaned.get('subject')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and subject and subject.academic_year_id != academic_year.pk:
+            self.add_error('subject', 'The subject must belong to the selected academic year.')
+        if school_class and subject and not subject.school_classes.filter(
+            pk=school_class.pk
+        ).exists():
+            self.add_error('subject', 'The subject must be assigned to the selected class.')
+        if (
+            self.user and self.user.role == User.Role.TEACHER
+            and subject and school_class
+            and not teacher_subjects(self.user).filter(
+                pk=subject.pk,
+                school_classes=school_class.pk,
+            ).exists()
+        ):
+            self.add_error('subject', 'You are not assigned to this subject and class.')
+        return cleaned
+
+
+class TeachingObservationForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = TeachingObservation
+        fields = [
+            'teacher', 'school_class', 'subject', 'observed_on',
+            'lesson_prepared', 'rating', 'strengths',
+            'improvement_areas', 'recommendation',
+        ]
+        widgets = {
+            'observed_on': DATE_WIDGET,
+            'strengths': forms.Textarea(attrs={'rows': 3}),
+            'improvement_areas': forms.Textarea(attrs={'rows': 3}),
+            'recommendation': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['teacher'].queryset = User.objects.filter(
+            role=User.Role.TEACHER, is_active=True,
+            teacher_profile__status='active',
+        ).select_related('teacher_profile').order_by('first_name', 'last_name')
+        self.fields['school_class'].queryset = SchoolClass.objects.order_by('name')
+        self.fields['subject'].queryset = Subject.objects.order_by('name')
+        self.fields['rating'].widget = forms.Select(
+            choices=[(value, f'{value} / 5') for value in range(1, 6)]
+        )
+
+    def clean(self):
+        cleaned = super().clean()
+        school_class = cleaned.get('school_class')
+        subject = cleaned.get('subject')
+        if school_class and subject and not subject.school_classes.filter(
+            pk=school_class.pk
+        ).exists():
+            self.add_error('subject', 'The subject must be assigned to the selected class.')
+        return cleaned
+
+
+class TeacherAttendanceForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = TeacherAttendance
+        fields = [
+            'teacher', 'date', 'status', 'check_in', 'check_out', 'note',
+        ]
+        widgets = {
+            'date': DATE_WIDGET,
+            'check_in': forms.TimeInput(attrs={'type': 'time'}),
+            'check_out': forms.TimeInput(attrs={'type': 'time'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['teacher'].queryset = User.objects.filter(
+            role=User.Role.TEACHER,
+            is_active=True,
+            teacher_profile__status='active',
+        ).order_by('first_name', 'last_name')
+
+
+class AcademicNoticeForm(BootstrapFormMixin, forms.Form):
+    title = forms.CharField(max_length=200)
+    message = forms.CharField(widget=forms.Textarea(attrs={'rows': 5}))
+    recipient = forms.ChoiceField(choices=(
+        ('teachers', 'All teachers'),
+        ('students', 'Students'),
+        ('department', 'Teachers in a department'),
+    ))
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.order_by('name'),
+        required=False,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if (
+            cleaned.get('recipient') == 'department'
+            and not cleaned.get('department')
+        ):
+            self.add_error('department', 'Select a department for this notice.')
+        return cleaned
+
+
+class TeachingScheduleForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = TeachingSchedule
+        fields = [
+            'academic_year', 'term', 'school_class', 'subject', 'teacher',
+            'weekday', 'start_time', 'end_time', 'room',
+        ]
+        widgets = {
+            'term': forms.RadioSelect(),
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['academic_year'].queryset = AcademicYear.objects.order_by(
+            '-start_date'
+        )
+        self.fields['school_class'].queryset = SchoolClass.objects.select_related(
+            'academic_year'
+        ).order_by('name')
+        self.fields['subject'].queryset = Subject.objects.select_related(
+            'academic_year'
+        ).prefetch_related('school_classes').order_by('name')
+        self.fields['teacher'].queryset = User.objects.filter(
+            role=User.Role.TEACHER, is_active=True,
+            teacher_profile__status='active',
+        ).select_related('teacher_profile').order_by('first_name', 'last_name')
+
+    def clean(self):
+        cleaned = super().clean()
+        academic_year = cleaned.get('academic_year')
+        school_class = cleaned.get('school_class')
+        subject = cleaned.get('subject')
+        if academic_year and school_class and school_class.academic_year_id != academic_year.pk:
+            self.add_error('school_class', 'The class must belong to the selected academic year.')
+        if academic_year and subject and subject.academic_year_id != academic_year.pk:
+            self.add_error('subject', 'The subject must belong to the selected academic year.')
+        return cleaned
+
+
+class ExaminationSessionForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = ExaminationSession
+        fields = [
+            'examination', 'school_class', 'subject', 'exam_date',
+            'start_time', 'end_time', 'venue', 'invigilators',
+        ]
+        widgets = {
+            'exam_date': DATE_WIDGET,
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+            'invigilators': forms.CheckboxSelectMultiple(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from examinations.models import Examination
+
+        self.fields['examination'].queryset = Examination.objects.select_related(
+            'academic_year'
+        ).order_by('-start_date', 'name')
+        self.fields['school_class'].queryset = SchoolClass.objects.select_related(
+            'academic_year'
+        ).order_by('name')
+        self.fields['subject'].queryset = Subject.objects.select_related(
+            'academic_year'
+        ).prefetch_related('school_classes').order_by('name')
+        self.fields['invigilators'].queryset = User.objects.filter(
+            role=User.Role.TEACHER, is_active=True,
+            teacher_profile__status='active',
+        ).order_by('first_name', 'last_name')
+
+    def clean(self):
+        cleaned = super().clean()
+        examination = cleaned.get('examination')
+        school_class = cleaned.get('school_class')
+        subject = cleaned.get('subject')
+        exam_date = cleaned.get('exam_date')
+        start_time = cleaned.get('start_time')
+        end_time = cleaned.get('end_time')
+        venue = cleaned.get('venue')
+        invigilators = cleaned.get('invigilators')
+        if not invigilators:
+            self.add_error('invigilators', 'Assign at least one invigilator.')
+        if examination and school_class and school_class.academic_year_id != examination.academic_year_id:
+            self.add_error('school_class', 'The class must belong to the examination academic year.')
+        if examination and subject and subject.academic_year_id != examination.academic_year_id:
+            self.add_error('subject', 'The subject must belong to the examination academic year.')
+        if (
+            examination and exam_date and start_time and end_time and venue
+            and invigilators
+        ):
+            conflicts = ExaminationSession.objects.filter(
+                exam_date=exam_date,
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            ).filter(
+                Q(venue__iexact=venue.strip())
+                | Q(invigilators__in=invigilators)
+            ).distinct()
+            if self.instance.pk:
+                conflicts = conflicts.exclude(pk=self.instance.pk)
+            if conflicts.exists():
+                self.add_error(
+                    'start_time',
+                    'This room or invigilator is already assigned during that time.',
+                )
         return cleaned

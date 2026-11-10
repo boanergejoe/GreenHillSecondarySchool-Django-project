@@ -8,6 +8,12 @@
     <div><h3>{{ exam.name }}</h3><p>{{ exam.get_exam_type_display }} &middot; {{ exam.academic_year.name }}</p></div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{% url 'examinations:result_list' %}?examination={{ exam.pk }}" class="btn btn-outline-secondary"><i class="bi bi-list-check me-1"></i>All Results</a>
+        {% if can_approve_results and not exam.is_published and result_count %}
+        <form method="post" action="{% url 'examinations:exam_approve_results' exam.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Approve &amp; Publish Results</button>
+        </form>
+        {% endif %}
         {% if user.is_superuser or user.role == 'admin' %}
         <a href="{% url 'examinations:exam_update' exam.pk %}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
         {% endif %}

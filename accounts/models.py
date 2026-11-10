@@ -10,6 +10,7 @@ class User(AbstractUser):
         PARENT = 'parent', 'Parent / Guardian'
         ACCOUNTANT = 'accountant', 'Accountant'
         REGISTRAR = 'registrar', 'Registrar'
+        DOS = 'dos', 'Director of Studies (DOS)'
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     phone = models.CharField(max_length=30, blank=True)
@@ -46,6 +47,10 @@ class User(AbstractUser):
     @property
     def is_accountant(self):
         return self.role == self.Role.ACCOUNTANT
+
+    @property
+    def is_dos(self):
+        return self.role == self.Role.DOS
 
     @property
     def initials(self):

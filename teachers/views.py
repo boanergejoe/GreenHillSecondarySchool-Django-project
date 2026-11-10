@@ -14,7 +14,7 @@ from .models import Teacher
 class TeacherListView(BaseListView):
     model = Teacher
     page_title = 'Teachers / Lecturers'
-    allowed_roles = ('accountant',)
+    allowed_roles = ('accountant', 'dos')
     search_fields = [
         'staff_id', 'user__first_name', 'user__last_name', 'user__email',
         'specialization', 'department__name',
@@ -64,6 +64,8 @@ class TeacherListView(BaseListView):
             'selected_status': self.request.GET.get('status', ''),
             'status_choices': Teacher.Status.choices,
         })
+        if self.request.user.role == 'dos':
+            context['can_create'] = False
         return context
 
 
@@ -108,7 +110,7 @@ class TeacherDetailView(DetailView):
         if not request.user.is_authenticated:
             return redirect('accounts:login')
         teacher = get_object_or_404(Teacher, pk=kwargs['pk'])
-        allowed = user_has_role(request.user, ('accountant',)) or (
+        allowed = user_has_role(request.user, ('accountant', 'dos')) or (
             request.user.role == 'teacher' and teacher.user_id == request.user.id
         )
         if not allowed:

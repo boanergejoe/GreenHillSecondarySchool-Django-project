@@ -1,5 +1,6 @@
 from django import forms
 from django.db import transaction
+from django.utils import timezone
 
 from accounts.forms import BootstrapFormMixin, UserAccountFormMixin
 from accounts.models import User
@@ -82,6 +83,9 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
         self.fields['school_class'].queryset = SchoolClass.objects.select_related(
             'academic_year'
         ).order_by('name')
+        self.fields['date_of_birth'].widget.attrs['max'] = (
+            timezone.localdate().isoformat()
+        )
         self.fields['department'].queryset = Department.objects.order_by('name')
         enrollment_terms = []
         if self.instance.pk and self.instance.school_class_id:
@@ -126,26 +130,32 @@ class StudentForm(UserAccountFormMixin, BootstrapFormMixin, forms.ModelForm):
             school_class = student.school_class
             terms = self.cleaned_data['term']
             active = student.status == Student.Status.ACTIVE
-            Enrollment.objects.filter(
-                student=student,
-                school_class=school_class,
-                academic_year=school_class.academic_year,
-            ).exclude(term__in=terms).update(is_active=False)
-            for term in terms:
-                Enrollment.objects.update_or_create(
+            if school_class:
+                Enrollment.objects.filter(
                     student=student,
                     school_class=school_class,
                     academic_year=school_class.academic_year,
-                    term=term,
-                    defaults={
-                        'enrolled_on': student.admission_date,
-                        'is_active': active,
-                    },
-                )
+                ).exclude(term__in=terms).update(is_active=False)
+                for term in terms:
+                    Enrollment.objects.update_or_create(
+                        student=student,
+                        school_class=school_class,
+                        academic_year=school_class.academic_year,
+                        term=term,
+                        defaults={
+                            'enrolled_on': student.admission_date,
+                            'is_active': active,
+                        },
+                    )
         return student
 
     def clean(self):
         cleaned = super().clean()
+        date_of_birth = cleaned.get('date_of_birth')
+        if date_of_birth and date_of_birth > timezone.localdate():
+            self.add_error(
+                'date_of_birth', 'Date of birth cannot be in the future.'
+            )
         school_class = cleaned.get('school_class')
         department = cleaned.get('department')
         if school_class and school_class.level in (

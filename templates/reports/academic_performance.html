@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ report_title }}</h3><p>{{ report_description }}</p></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-success" href="?academic_year={{ selected_year|urlencode }}&format=excel"><i class="bi bi-file-earmark-excel me-1"></i>Download Excel</a>
+        <a class="btn btn-outline-danger" href="?academic_year={{ selected_year|urlencode }}&format=pdf"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
+    </div>
+</div>
+<form method="get" class="filter-bar">
+    <select name="academic_year" class="form-select">
+        <option value="">All academic years</option>
+        {% for year in academic_years %}
+        <option value="{{ year.pk }}" {% if selected_year == year.pk|stringformat:'s' %}selected{% endif %}>{{ year.name }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-navy" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
+    <a class="btn btn-outline-secondary" href="{{ request.path }}">Reset</a>
+</form>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>{% for cell in row %}<td>{{ cell|default:"—" }}</td>{% endfor %}</tr>
+                {% empty %}
+                <tr><td colspan="{{ headers|length }}" class="empty-state"><i class="bi bi-bar-chart"></i>No academic records match this report.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

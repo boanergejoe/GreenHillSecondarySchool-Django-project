@@ -34,4 +34,33 @@ urlpatterns = [
     path('enrollments/add/', views.EnrollmentCreateView.as_view(), name='enrollment_create'),
     path('enrollments/<int:pk>/edit/', views.EnrollmentUpdateView.as_view(), name='enrollment_update'),
     path('enrollments/<int:pk>/delete/', views.EnrollmentDeleteView.as_view(), name='enrollment_delete'),
+
+    path('syllabus/', views.SyllabusCoverageListView.as_view(), name='syllabus_coverage_list'),
+    path('syllabus/add/', views.SyllabusCoverageCreateView.as_view(), name='syllabus_coverage_create'),
+    path('syllabus/<int:pk>/edit/', views.SyllabusCoverageUpdateView.as_view(), name='syllabus_coverage_update'),
+    path('syllabus/<int:pk>/delete/', views.SyllabusCoverageDeleteView.as_view(), name='syllabus_coverage_delete'),
+
+    path('lesson-plans/', views.LessonPlanListView.as_view(), name='lesson_plan_list'),
+    path('lesson-plans/add/', views.LessonPlanCreateView.as_view(), name='lesson_plan_create'),
+    path('lesson-plans/<int:pk>/edit/', views.LessonPlanUpdateView.as_view(), name='lesson_plan_update'),
+    path('lesson-plans/<int:pk>/review/', views.LessonPlanReviewView.as_view(), name='lesson_plan_review'),
+
+    path('observations/', views.TeachingObservationListView.as_view(), name='observation_list'),
+    path('observations/add/', views.TeachingObservationCreateView.as_view(), name='observation_create'),
+    path('teacher-attendance/', views.TeacherAttendanceListView.as_view(), name='teacher_attendance_list'),
+    path('teacher-attendance/add/', views.TeacherAttendanceCreateView.as_view(), name='teacher_attendance_create'),
+    path('teacher-attendance/<int:pk>/edit/', views.TeacherAttendanceUpdateView.as_view(), name='teacher_attendance_update'),
+    path('teacher-attendance/<int:pk>/delete/', views.TeacherAttendanceDeleteView.as_view(), name='teacher_attendance_delete'),
+    path('activity/', views.AcademicAuditLogListView.as_view(), name='academic_activity'),
+    path('notices/add/', views.AcademicNoticeCreateView.as_view(), name='academic_notice_create'),
+
+    path('teaching-schedule/', views.TeachingScheduleListView.as_view(), name='teaching_schedule_list'),
+    path('teaching-schedule/add/', views.TeachingScheduleCreateView.as_view(), name='teaching_schedule_create'),
+    path('teaching-schedule/<int:pk>/edit/', views.TeachingScheduleUpdateView.as_view(), name='teaching_schedule_update'),
+    path('teaching-schedule/<int:pk>/delete/', views.TeachingScheduleDeleteView.as_view(), name='teaching_schedule_delete'),
+
+    path('examination-timetable/', views.ExaminationSessionListView.as_view(), name='examination_session_list'),
+    path('examination-timetable/add/', views.ExaminationSessionCreateView.as_view(), name='examination_session_create'),
+    path('examination-timetable/<int:pk>/edit/', views.ExaminationSessionUpdateView.as_view(), name='examination_session_update'),
+    path('examination-timetable/<int:pk>/delete/', views.ExaminationSessionDeleteView.as_view(), name='examination_session_delete'),
 ]

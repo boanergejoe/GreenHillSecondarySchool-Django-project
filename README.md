@@ -12,6 +12,7 @@ A Django-based college and high school management system for **Green Hill Second
 - Class-specific fee structures, including differentiated Senior 3/4 tuition pricing.
 - Attendance capture, filtering, summaries, and reporting.
 - Examinations, result entry, result lists, report cards, and PDF report cards.
+- DOS academic oversight for lesson-plan review, syllabus tracking, teacher attendance and observations, academic schedules, examination timetables, notices, result approval, and performance reports.
 - Fee structures, payments, receipts, fee statements, and financial overview.
 - Assignments, student submissions, teacher review/grading, AI-assisted score suggestions requiring teacher approval, and objective multiple-choice quizzes with automatic grading.
 - A public school-information assistant that answers from published school details and announcements.
@@ -42,6 +43,7 @@ From PowerShell in the project directory:
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
+$env:DJANGO_DEBUG = "True"
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 python manage.py migrate
@@ -96,15 +98,19 @@ Term 1, Term 2, and Term 3 are fixed application choices for fees, subjects, enr
 
 ## Environment Variables
 
+For local development, create an untracked `.env` file and set `DJANGO_DEBUG=True`. The application uses its development-only signing key only in this explicit debug mode. Without that opt-in, settings default to production mode and require a strong `DJANGO_SECRET_KEY` and explicit `DJANGO_ALLOWED_HOSTS`; missing deployment configuration raises an error during startup.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `DJANGO_SECRET_KEY` | Development key | Required, strong production secret key |
-| `DJANGO_DEBUG` | `True` | Set to `False` in production |
-| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated allowed hosts |
+| `DJANGO_SECRET_KEY` | Development-only key when debug is explicitly enabled | Required, strong production secret key of at least 50 characters |
+| `DJANGO_DEBUG` | `False` | Set to `True` explicitly for local development; production must remain `False` |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` in development; required in production | Comma-separated allowed hosts |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | empty | Comma-separated HTTPS origins, for example `https://school.pythonanywhere.com` |
 | `DJANGO_TRUST_X_FORWARDED_PROTO` | `True` when `DJANGO_DEBUG=False` | Trust the proxy HTTPS scheme header |
 | `DJANGO_SECURE_SSL_REDIRECT` | `True` when debug is off | Force HTTPS |
 | `DJANGO_SECURE_HSTS_SECONDS` | `31536000` | HSTS lifetime; set `0` while testing |
+| `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS` | `False` | Apply HSTS to subdomains only when every subdomain is HTTPS-ready |
+| `DJANGO_SECURE_HSTS_PRELOAD` | `False` | Enable HSTS preload only after reviewing the domain's long-term HTTPS requirements |
 | `DJANGO_EMAIL_BACKEND` | Console backend | Use `django.core.mail.backends.smtp.EmailBackend` for SMTP |
 | `DJANGO_EMAIL_HOST` | empty | SMTP server |
 | `DJANGO_EMAIL_PORT` | `587` | SMTP port |

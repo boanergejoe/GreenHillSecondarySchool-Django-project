@@ -11,10 +11,14 @@
 </div>
 
 <div class="row g-3 mb-3">
-    <div class="col-md-{% if is_teacher %}4{% else %}3{% endif %}"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-people"></i></div><h3>{{ student_count }}</h3><p>Assigned Students</p></div></div>
+    <div class="col-md-{% if is_teacher %}4{% else %}3{% endif %}"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-people"></i></div><h3>{{ student_count }}</h3><p>{% if is_teacher %}Assigned Students{% else %}Active Students{% endif %}</p></div></div>
     {% if is_teacher %}
     <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-orange"><i class="bi bi-building"></i></div><h3>{{ class_count }}</h3><p>Assigned Classes</p></div></div>
     <div class="col-md-4"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-journal-bookmark"></i></div><h3>{{ subject_count }}</h3><p>My Subjects</p></div></div>
+    {% elif is_dos %}
+    <div class="col-md-3"><div class="stat-card"><div class="stat-icon bg-soft-orange"><i class="bi bi-building"></i></div><h3>{{ class_count }}</h3><p>Classes</p></div></div>
+    <div class="col-md-3"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-journal-bookmark"></i></div><h3>{{ subject_count }}</h3><p>Active Subjects</p></div></div>
+    <div class="col-md-3"><div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-clipboard2-data"></i></div><h3>{{ exam_count }}</h3><p>Examinations</p></div></div>
     {% else %}
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-person-badge"></i></div><h3>{{ teacher_count }}</h3><p>Teachers</p></div></div>
     <div class="col-md-3"><div class="stat-card"><div class="stat-icon bg-soft-orange"><i class="bi bi-building"></i></div><h3>{{ class_count }}</h3><p>Classes</p></div></div>
@@ -23,6 +27,23 @@
 </div>
 
 <div class="row g-3">
+    {% if is_dos %}
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body d-flex gap-3"><div class="stat-icon bg-soft-blue mb-0"><i class="bi bi-person-lines-fill"></i></div><div><h5>Teacher Performance</h5><p class="text-muted small">Review assignments, submitted lesson plans, teaching observations and associated student assessment outcomes.</p><a href="{% url 'reports:teacher_performance' %}" class="btn btn-sm btn-primary">Open report</a></div></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body d-flex gap-3"><div class="stat-icon bg-soft-purple mb-0"><i class="bi bi-journal-bookmark"></i></div><div><h5>Subject Performance</h5><p class="text-muted small">Compare recorded marks by subject, teacher, department and class, with downloadable PDF and Excel output.</p><a href="{% url 'reports:subject_performance' %}" class="btn btn-sm btn-primary">Open report</a></div></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body d-flex gap-3"><div class="stat-icon bg-soft-orange mb-0"><i class="bi bi-diagram-3"></i></div><div><h5>Department Performance</h5><p class="text-muted small">Summarize department staffing, classes, subjects and recorded examination performance.</p><a href="{% url 'reports:department_performance' %}" class="btn btn-sm btn-primary">Open report</a></div></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body d-flex gap-3"><div class="stat-icon bg-soft-green mb-0"><i class="bi bi-journal-check"></i></div><div><h5>Syllabus Coverage</h5><p class="text-muted small">Track planned and completed topics by academic year, term, class and subject.</p><a href="{% url 'reports:syllabus_coverage' %}" class="btn btn-sm btn-primary">Open report</a></div></div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body d-flex gap-3"><div class="stat-icon bg-soft-orange mb-0"><i class="bi bi-mortarboard"></i></div><div><h5>Student Academic Progress</h5><p class="text-muted small">Identify top performers and students whose assessment average suggests they may need support.</p><a href="{% url 'reports:student_progress' %}" class="btn btn-sm btn-primary">Open report</a></div></div></div>
+    </div>
+    {% endif %}
     {% if user.is_superuser or user.role == 'admin' or user.role == 'accountant' %}
     <div class="col-lg-6">
         <div class="card h-100">

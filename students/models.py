@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -98,10 +99,21 @@ class Student(models.Model):
         return f'{self.user.display_name} ({self.student_id or "new"})'
 
     def save(self, *args, **kwargs):
+        if self.date_of_birth and self.date_of_birth > timezone.localdate():
+            raise ValidationError({
+                'date_of_birth': 'Date of birth cannot be in the future.'
+            })
         if not self.student_id:
             year = timezone.localdate().year
             self.student_id = f'GSS-{year}-{uuid.uuid4().hex[:5].upper()}'
         super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if self.date_of_birth and self.date_of_birth > timezone.localdate():
+            raise ValidationError({
+                'date_of_birth': 'Date of birth cannot be in the future.'
+            })
 
     @property
     def full_name(self):
@@ -109,7 +121,7 @@ class Student(models.Model):
 
     @property
     def age(self):
-        if not self.date_of_birth:
+        if not self.date_of_birth or self.date_of_birth > timezone.localdate():
             return None
         today = timezone.localdate()
         return today.year - self.date_of_birth.year - (

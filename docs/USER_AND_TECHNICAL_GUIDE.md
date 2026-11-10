@@ -30,6 +30,10 @@ Registrars can register and update students, manage enrollments, archive and res
 
 Use **My Subjects** to see assigned subjects and classes. Use **Examinations** to enter marks for assigned subjects and students in eligible classes. Assignments and quizzes are managed from their respective sidebar links. AI-generated quizzes are drafts: check the questions and answer keys before publishing. AI-written-answer scores are suggestions only and require teacher review and saving.
 
+### Director of Studies
+
+The DOS dashboard summarizes current-year academic performance, classes, subjects, syllabus progress, lesson plans awaiting review, examinations, and teacher attendance. Use **Academic Calendar**, **Classes**, and **Subjects** to maintain academic setup; record teaching periods and examination timetable sessions; and assign exam invigilators. Teachers can submit lesson plans and syllabus progress for their assigned classes and subjects. The DOS can review lesson plans, record classroom observations and teacher attendance, send academic notices, approve examination results, and review or export student, class, subject, teacher, department, and syllabus reports. Academic changes and reviews appear in **Academic Activity**. DOS access is limited to academic functions and does not grant access to financial or Registrar-only student record operations.
+
 ### Finance staff
 
 Use **Fee Structure** to maintain charges and **Payments** to record receipts. Confirm the student and fee before saving. Payment totals, balances, receipts, and the dashboard collection trend are available in finance pages.
@@ -51,6 +55,7 @@ From the repository root in PowerShell:
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
+$env:DJANGO_DEBUG = "True"
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py seed_demo

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_heading %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div><h3>{{ page_title }}</h3><p>Send an internal academic notice to teachers, students or a department team.</p></div>
+    <a href="{% url 'academics:academic_activity' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1"></i>Activity log</a>
+</div>
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                    {% for field in form %}
+                    <div class="mb-3 {% if field.name == 'department' %}academic-department-field{% endif %}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary" type="submit"><i class="bi bi-send me-1"></i>Send notice</button>
+                        <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="alert alert-info mt-3 mb-0"><i class="bi bi-info-circle me-2"></i>Department-only notices are delivered directly to that department's teachers and are not posted to the all-teachers announcement feed.</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const recipient = document.getElementById('id_recipient');
+    const departmentField = document.querySelector('.academic-department-field');
+    if (!recipient || !departmentField) return;
+    const updateDepartmentVisibility = () => {
+        departmentField.hidden = recipient.value !== 'department';
+    };
+    recipient.addEventListener('change', updateDepartmentVisibility);
+    updateDepartmentVisibility();
+})();
+</script>
+{% endblock %}

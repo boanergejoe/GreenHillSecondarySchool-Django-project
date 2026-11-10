@@ -239,3 +239,434 @@ class Enrollment(models.Model):
 
     def get_absolute_url(self):
         return reverse('academics:enrollment_list')
+
+
+class SyllabusCoverage(models.Model):
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='syllabus_coverage'
+    )
+    term = models.CharField(max_length=50, choices=Term.Name.choices)
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.PROTECT, related_name='syllabus_coverage'
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.PROTECT, related_name='syllabus_coverage'
+    )
+    topics_planned = models.PositiveIntegerField(default=1)
+    topics_completed = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='updated_syllabus_coverage',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['school_class__name', 'subject__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('academic_year', 'term', 'school_class', 'subject'),
+                name='unique_syllabus_coverage_per_class_term',
+            ),
+        ]
+        verbose_name_plural = 'syllabus coverage records'
+
+    def __str__(self):
+        return f'{self.subject} - {self.school_class} - {self.term}'
+
+    @property
+    def completion_percentage(self):
+        if not self.topics_planned:
+            return 0
+        return round(self.topics_completed / self.topics_planned * 100, 1)
+
+    def clean(self):
+        errors = {}
+        if self.school_class_id and self.academic_year_id:
+            if self.school_class.academic_year_id != self.academic_year_id:
+                errors['school_class'] = (
+                    'The class must belong to the selected academic year.'
+                )
+        if self.subject_id and self.academic_year_id:
+            if self.subject.academic_year_id != self.academic_year_id:
+                errors['subject'] = (
+                    'The subject must belong to the selected academic year.'
+                )
+        if self.subject_id and self.school_class_id:
+            if not self.subject.school_classes.filter(pk=self.school_class_id).exists():
+                errors['subject'] = (
+                    'The subject must be assigned to the selected class.'
+                )
+        if self.topics_planned and self.topics_completed > self.topics_planned:
+            errors['topics_completed'] = (
+                'Completed topics cannot exceed the number planned.'
+            )
+        if errors:
+            raise ValidationError(errors)
+
+    def get_absolute_url(self):
+        return reverse('academics:syllabus_coverage_list')
+
+
+class LessonPlan(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending review'
+        APPROVED = 'approved', 'Approved'
+        REVISION = 'revision', 'Revision requested'
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='lesson_plans'
+    )
+    term = models.CharField(max_length=50, choices=Term.Name.choices)
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.PROTECT, related_name='lesson_plans'
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.PROTECT, related_name='lesson_plans'
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='lesson_plans',
+        limit_choices_to={'role': 'teacher'},
+    )
+    lesson_date = models.DateField()
+    topic = models.CharField(max_length=200)
+    objectives = models.TextField()
+    resources = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    review_note = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reviewed_lesson_plans',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-lesson_date', 'school_class__name', 'subject__name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('teacher', 'school_class', 'subject', 'lesson_date', 'topic'),
+                name='unique_teacher_lesson_plan_topic',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.topic} - {self.subject} - {self.lesson_date}'
+
+    def clean(self):
+        errors = {}
+        if self.school_class_id and self.academic_year_id:
+            if self.school_class.academic_year_id != self.academic_year_id:
+                errors['school_class'] = (
+                    'The class must belong to the selected academic year.'
+                )
+        if self.subject_id and self.academic_year_id:
+            if self.subject.academic_year_id != self.academic_year_id:
+                errors['subject'] = (
+                    'The subject must belong to the selected academic year.'
+                )
+        if self.subject_id and self.school_class_id:
+            if not self.subject.school_classes.filter(pk=self.school_class_id).exists():
+                errors['subject'] = (
+                    'The subject must be assigned to the selected class.'
+                )
+        if self.teacher_id and self.subject_id and self.school_class_id:
+            from .access import teacher_subjects
+
+            if not teacher_subjects(self.teacher).filter(
+                pk=self.subject_id,
+                school_classes=self.school_class_id,
+            ).exists():
+                errors['teacher'] = 'The teacher is not assigned to this subject and class.'
+        if errors:
+            raise ValidationError(errors)
+
+    def get_absolute_url(self):
+        return reverse('academics:lesson_plan_list')
+
+
+class TeachingObservation(models.Model):
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='teaching_observations',
+        limit_choices_to={'role': 'teacher'},
+    )
+    observer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='conducted_teaching_observations',
+    )
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='teaching_observations',
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='teaching_observations',
+    )
+    observed_on = models.DateField(default=timezone.localdate)
+    lesson_prepared = models.BooleanField(default=False)
+    rating = models.PositiveSmallIntegerField()
+    strengths = models.TextField()
+    improvement_areas = models.TextField(blank=True)
+    recommendation = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-observed_on', 'teacher__first_name']
+
+    def __str__(self):
+        return f'{self.teacher} - {self.observed_on} ({self.rating}/5)'
+
+    def clean(self):
+        errors = {}
+        if self.rating and not 1 <= self.rating <= 5:
+            errors['rating'] = 'Rating must be between 1 and 5.'
+        if self.subject_id and self.school_class_id:
+            if not self.subject.school_classes.filter(pk=self.school_class_id).exists():
+                errors['subject'] = (
+                    'The subject must be assigned to the selected class.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+
+class TeacherAttendance(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = 'present', 'Present'
+        LATE = 'late', 'Late'
+        ABSENT = 'absent', 'Absent'
+        EXCUSED = 'excused', 'Excused'
+
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='teacher_attendance_records',
+        limit_choices_to={'role': 'teacher'},
+    )
+    date = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=8, choices=Status.choices)
+    check_in = models.TimeField(null=True, blank=True)
+    check_out = models.TimeField(null=True, blank=True)
+    note = models.CharField(max_length=255, blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='recorded_teacher_attendance',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', 'teacher__first_name', 'teacher__last_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=('teacher', 'date'),
+                name='unique_teacher_attendance_per_day',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.teacher} - {self.date} ({self.get_status_display()})'
+
+    def clean(self):
+        if self.check_in and self.check_out and self.check_out <= self.check_in:
+            raise ValidationError({
+                'check_out': 'Check-out time must be after check-in time.',
+            })
+
+
+class AcademicAuditLog(models.Model):
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='academic_audit_events',
+    )
+    action = models.CharField(max_length=80)
+    object_type = models.CharField(max_length=80)
+    object_id = models.CharField(max_length=64, blank=True)
+    summary = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'academic audit event'
+        verbose_name_plural = 'academic audit events'
+
+    def __str__(self):
+        return f'{self.action}: {self.summary[:80]}'
+
+
+class TeachingSchedule(models.Model):
+    class Weekday(models.TextChoices):
+        MONDAY = 'monday', 'Monday'
+        TUESDAY = 'tuesday', 'Tuesday'
+        WEDNESDAY = 'wednesday', 'Wednesday'
+        THURSDAY = 'thursday', 'Thursday'
+        FRIDAY = 'friday', 'Friday'
+        SATURDAY = 'saturday', 'Saturday'
+
+    academic_year = models.ForeignKey(
+        AcademicYear, on_delete=models.PROTECT, related_name='teaching_schedules'
+    )
+    term = models.CharField(max_length=50, choices=Term.Name.choices)
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.CASCADE, related_name='teaching_schedules'
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name='teaching_schedules'
+    )
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name='teaching_schedules',
+        limit_choices_to={'role': 'teacher'},
+    )
+    weekday = models.CharField(max_length=12, choices=Weekday.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    room = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        ordering = ['weekday', 'start_time', 'school_class__name']
+
+    def __str__(self):
+        return f'{self.weekday}: {self.subject} - {self.school_class}'
+
+    def clean(self):
+        errors = {}
+        if self.end_time and self.start_time and self.end_time <= self.start_time:
+            errors['end_time'] = 'End time must be after start time.'
+        if self.school_class_id and self.academic_year_id:
+            if self.school_class.academic_year_id != self.academic_year_id:
+                errors['school_class'] = (
+                    'The class must belong to the selected academic year.'
+                )
+        if self.subject_id and self.academic_year_id:
+            if self.subject.academic_year_id != self.academic_year_id:
+                errors['subject'] = (
+                    'The subject must belong to the selected academic year.'
+                )
+        if self.subject_id and self.school_class_id:
+            if not self.subject.school_classes.filter(pk=self.school_class_id).exists():
+                errors['subject'] = (
+                    'The subject must be assigned to the selected class.'
+                )
+        if self.teacher_id and self.subject_id and self.school_class_id:
+            from .access import teacher_subjects
+
+            if not teacher_subjects(self.teacher).filter(
+                pk=self.subject_id,
+                school_classes=self.school_class_id,
+            ).exists():
+                errors['teacher'] = (
+                    'The teacher must be assigned to this subject and class.'
+                )
+        if (
+            self.weekday and self.start_time and self.end_time
+            and self.school_class_id and self.teacher_id
+        ):
+            conflicts = TeachingSchedule.objects.filter(
+                weekday=self.weekday,
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time,
+            ).filter(
+                models.Q(teacher_id=self.teacher_id)
+                | models.Q(school_class_id=self.school_class_id)
+                | (
+                    models.Q(room__iexact=self.room.strip())
+                    if self.room.strip() else models.Q(pk__in=[])
+                )
+            )
+            if self.pk:
+                conflicts = conflicts.exclude(pk=self.pk)
+            if conflicts.exists():
+                errors['start_time'] = (
+                    'This period overlaps another class or teacher schedule.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    def get_absolute_url(self):
+        return reverse('academics:teaching_schedule_list')
+
+
+class ExaminationSession(models.Model):
+    examination = models.ForeignKey(
+        'examinations.Examination', on_delete=models.CASCADE,
+        related_name='sessions',
+    )
+    school_class = models.ForeignKey(
+        SchoolClass, on_delete=models.PROTECT, related_name='examination_sessions'
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.PROTECT, related_name='examination_sessions'
+    )
+    exam_date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    venue = models.CharField(max_length=100)
+    invigilators = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, related_name='invigilated_exam_sessions',
+        limit_choices_to={'role': 'teacher'},
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='created_examination_sessions',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['exam_date', 'start_time', 'school_class__name']
+
+    def __str__(self):
+        return f'{self.examination.name}: {self.subject} - {self.exam_date}'
+
+    @property
+    def invigilator_names(self):
+        names = [teacher.display_name for teacher in self.invigilators.all()]
+        return ', '.join(names) if names else 'Not assigned'
+
+    @property
+    def time_range(self):
+        return f'{self.start_time:%H:%M}–{self.end_time:%H:%M}'
+
+    def clean(self):
+        errors = {}
+        if self.end_time and self.start_time and self.end_time <= self.start_time:
+            errors['end_time'] = 'End time must be after start time.'
+        if self.examination_id and self.exam_date:
+            if not self.examination.start_date <= self.exam_date <= self.examination.end_date:
+                errors['exam_date'] = (
+                    'The session date must fall within the examination dates.'
+                )
+        if self.examination_id and self.school_class_id:
+            if self.school_class.academic_year_id != self.examination.academic_year_id:
+                errors['school_class'] = (
+                    'The class must belong to the examination academic year.'
+                )
+            exam_classes = self.examination.school_classes.all()
+            if exam_classes.exists() and not exam_classes.filter(
+                pk=self.school_class_id
+            ).exists():
+                errors['school_class'] = (
+                    'The class is not included in this examination.'
+                )
+        if self.subject_id and self.school_class_id:
+            if not self.subject.school_classes.filter(pk=self.school_class_id).exists():
+                errors['subject'] = (
+                    'The subject must be assigned to the selected class.'
+                )
+            elif (
+                self.examination_id
+                and self.subject.academic_year_id != self.examination.academic_year_id
+            ):
+                errors['subject'] = (
+                    'The subject must belong to the examination academic year.'
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    def get_absolute_url(self):
+        return reverse('academics:examination_schedule_list')

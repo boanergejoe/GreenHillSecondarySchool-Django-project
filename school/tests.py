@@ -18,7 +18,9 @@ from django.utils import timezone
 from academics.access import teacher_classes, teacher_subjects
 from academics.forms import EnrollmentForm, SubjectForm, TermForm
 from academics.models import (
-    AcademicYear, Department, Enrollment, SchoolClass, Subject, Term,
+    AcademicAuditLog, AcademicYear, Department, Enrollment, LessonPlan,
+    ExaminationSession, SchoolClass, Subject, SyllabusCoverage,
+    TeacherAttendance, TeachingObservation, TeachingSchedule, Term,
 )
 from accounts.models import User
 from assignments.models import Assignment, Quiz, QuizAttempt, QuizQuestion
@@ -43,6 +45,13 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         call_command('seed_demo', verbosity=0)
+        User.objects.create_user(
+            username='dos_test',
+            password='Dos@12345',
+            first_name='Director',
+            last_name='of Studies',
+            role=User.Role.DOS,
+        )
 
     def login(self, username):
         user = User.objects.get(username=username)
@@ -52,13 +61,342 @@ class GreenHillSecondaryIntegrationTests(TestCase):
     def test_all_role_dashboards_render(self):
         for username in (
             'admin', 'teacher1', 'student1', 'parent1', 'accountant',
-            'registrar',
+            'registrar', 'dos_test',
         ):
             self.login(username)
             response = self.client.get(reverse('accounts:dashboard'))
             self.assertEqual(response.status_code, 200, username)
             if username == 'registrar':
                 self.assertEqual(response.context['dashboard_type'], 'registrar')
+            elif username == 'dos_test':
+                self.assertEqual(response.context['dashboard_type'], 'dos')
+
+    def test_dos_can_manage_academic_pages_but_not_finance_or_student_records(self):
+        self.login('dos_test')
+        urls = [
+            reverse('academics:department_list'),
+            reverse('academics:year_list'),
+            reverse('academics:term_list'),
+            reverse('academics:class_list'),
+            reverse('academics:subject_list'),
+            reverse('academics:enrollment_list'),
+            reverse('academics:syllabus_coverage_list'),
+            reverse('academics:syllabus_coverage_create'),
+            reverse('academics:lesson_plan_list'),
+            reverse('academics:lesson_plan_create'),
+            reverse('academics:observation_list'),
+            reverse('academics:observation_create'),
+            reverse('academics:teacher_attendance_list'),
+            reverse('academics:teacher_attendance_create'),
+            reverse('academics:academic_activity'),
+            reverse('academics:academic_notice_create'),
+            reverse('academics:teaching_schedule_list'),
+            reverse('academics:teaching_schedule_create'),
+            reverse('academics:examination_session_list'),
+            reverse('academics:examination_session_create'),
+            reverse('examinations:exam_list'),
+            reverse('examinations:exam_create'),
+            reverse('examinations:result_list'),
+            reverse('attendance:list'),
+            reverse('reports:index'),
+            reverse('reports:export_results', args=['excel']),
+            reverse('reports:class_performance'),
+            reverse('reports:teacher_performance'),
+            reverse('reports:subject_performance'),
+            reverse('reports:department_performance'),
+            reverse('reports:syllabus_coverage'),
+            reverse('reports:student_progress'),
+            reverse('teachers:teacher_list'),
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200, url)
+
+        for url in (
+            reverse('students:student_list'),
+            reverse('finance:financial_overview'),
+            reverse('finance:payment_list'),
+            reverse(
+                'examinations:enter_results',
+                args=[Examination.objects.first().pk],
+            ),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 403, url)
+
+    def test_future_student_birth_dates_are_rejected(self):
+        future_date = timezone.localdate() + timedelta(days=1)
+        form = StudentForm(data={'date_of_birth': future_date.isoformat()})
+        self.assertFalse(form.is_valid())
+        self.assertIn('date_of_birth', form.errors)
+
+        student_user = User.objects.create_user(
+            username='future_dob_test',
+            password='Student@12345',
+            role=User.Role.STUDENT,
+        )
+        student = Student(user=student_user, date_of_birth=future_date)
+        self.assertIsNone(student.age)
+        with self.assertRaises(ValidationError):
+            student.full_clean()
+        with self.assertRaises(ValidationError):
+            student.save()
+
+    def test_teacher_can_submit_lesson_plan_and_syllabus_coverage(self):
+        teacher = self.login('teacher1')
+        subject = teacher_subjects(teacher).first()
+        self.assertIsNotNone(subject)
+        school_class = subject.school_classes.first()
+        self.assertIsNotNone(school_class)
+        year = school_class.academic_year
+
+        response = self.client.post(reverse('academics:lesson_plan_create'), {
+            'academic_year': year.pk,
+            'term': Term.Name.TERM_1,
+            'school_class': school_class.pk,
+            'subject': subject.pk,
+            'lesson_date': timezone.localdate().isoformat(),
+            'topic': 'Linear equations',
+            'objectives': 'Solve simple linear equations.',
+            'resources': 'Textbook and board',
+        })
+        self.assertRedirects(response, reverse('academics:lesson_plan_list'))
+        lesson_plan = LessonPlan.objects.get(topic='Linear equations')
+        self.assertEqual(lesson_plan.teacher, teacher)
+        self.assertTrue(
+            AcademicAuditLog.objects.filter(
+                action='lesson_plan_submitted',
+                object_id=str(lesson_plan.pk),
+            ).exists()
+        )
+
+        response = self.client.post(
+            reverse('academics:syllabus_coverage_create'),
+            {
+                'academic_year': year.pk,
+                'term': Term.Name.TERM_1,
+                'school_class': school_class.pk,
+                'subject': subject.pk,
+                'topics_planned': 12,
+                'topics_completed': 5,
+                'notes': 'Unit 1 complete.',
+            },
+        )
+        self.assertRedirects(
+            response, reverse('academics:syllabus_coverage_list')
+        )
+        coverage = SyllabusCoverage.objects.get(
+            academic_year=year,
+            term=Term.Name.TERM_1,
+            school_class=school_class,
+            subject=subject,
+        )
+        self.assertEqual(coverage.completion_percentage, 41.7)
+        self.assertEqual(coverage.updated_by, teacher)
+
+    def test_dos_can_review_lesson_plans_and_record_observations(self):
+        teacher = User.objects.get(username='teacher1')
+        subject = teacher_subjects(teacher).first()
+        school_class = subject.school_classes.first()
+        year = school_class.academic_year
+        lesson_plan = LessonPlan.objects.create(
+            academic_year=year,
+            term=Term.Name.TERM_1,
+            school_class=school_class,
+            subject=subject,
+            teacher=teacher,
+            lesson_date=timezone.localdate(),
+            topic='Fractions',
+            objectives='Compare fractions.',
+        )
+        dos = self.login('dos_test')
+        response = self.client.post(
+            reverse('academics:lesson_plan_review', args=[lesson_plan.pk]),
+            {'status': LessonPlan.Status.REVISION, 'review_note': 'Add examples.'},
+        )
+        self.assertRedirects(response, reverse('academics:lesson_plan_list'))
+        lesson_plan.refresh_from_db()
+        self.assertEqual(lesson_plan.status, LessonPlan.Status.REVISION)
+        self.assertEqual(lesson_plan.reviewed_by, dos)
+        self.assertTrue(teacher.notifications.filter(
+            title='Lesson plan revision requested'
+        ).exists())
+
+        response = self.client.post(reverse('academics:observation_create'), {
+            'teacher': teacher.pk,
+            'school_class': school_class.pk,
+            'subject': subject.pk,
+            'observed_on': timezone.localdate().isoformat(),
+            'lesson_prepared': 'on',
+            'rating': 4,
+            'strengths': 'Clear objectives and student participation.',
+            'improvement_areas': 'Use more formative checks.',
+            'recommendation': 'Add an exit ticket.',
+        })
+        self.assertRedirects(response, reverse('academics:observation_list'))
+        observation = TeachingObservation.objects.get(observer=dos)
+        self.assertEqual(observation.rating, 4)
+        self.assertTrue(AcademicAuditLog.objects.filter(
+            action='teaching_observation_recorded',
+            object_id=str(observation.pk),
+        ).exists())
+
+        response = self.client.post(
+            reverse('academics:teacher_attendance_create'),
+            {
+                'teacher': teacher.pk,
+                'date': timezone.localdate().isoformat(),
+                'status': TeacherAttendance.Status.PRESENT,
+                'check_in': '07:45',
+                'check_out': '15:00',
+                'note': 'On time.',
+            },
+        )
+        self.assertRedirects(
+            response, reverse('academics:teacher_attendance_list')
+        )
+        attendance = TeacherAttendance.objects.get(teacher=teacher)
+        self.assertEqual(attendance.recorded_by, dos)
+        self.assertEqual(attendance.status, TeacherAttendance.Status.PRESENT)
+        self.assertTrue(AcademicAuditLog.objects.filter(
+            action='academic_record_created',
+            object_id=str(attendance.pk),
+            object_type='TeacherAttendance',
+        ).exists())
+
+    def test_dos_department_notice_is_only_sent_to_that_department(self):
+        teacher = User.objects.get(username='teacher1')
+        department = teacher.teacher_profile.department
+        self.assertIsNotNone(department)
+        self.login('dos_test')
+        response = self.client.post(reverse('academics:academic_notice_create'), {
+            'title': 'Department meeting',
+            'message': 'Please submit department reports.',
+            'recipient': 'department',
+            'department': department.pk,
+        })
+        self.assertRedirects(response, reverse('academics:academic_activity'))
+        self.assertTrue(teacher.notifications.filter(
+            title='Department meeting'
+        ).exists())
+        expected_recipients = set(User.objects.filter(
+            role=User.Role.TEACHER,
+            teacher_profile__department=department,
+        ).values_list('pk', flat=True))
+        actual_recipients = set(User.objects.filter(
+            notifications__title='Department meeting'
+        ).values_list('pk', flat=True))
+        self.assertSetEqual(actual_recipients, expected_recipients)
+        self.assertFalse(Announcement.objects.filter(
+            title='Department meeting'
+        ).exists())
+
+    def test_dos_academic_reports_support_pdf_and_excel(self):
+        self.login('dos_test')
+        for route_name in (
+            'reports:teacher_performance',
+            'reports:subject_performance',
+            'reports:department_performance',
+            'reports:syllabus_coverage',
+            'reports:student_progress',
+        ):
+            for output_format, content_type in (
+                ('excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+                ('pdf', 'application/pdf'),
+            ):
+                with self.subTest(route=route_name, format=output_format):
+                    response = self.client.get(
+                        reverse(route_name), {'format': output_format}
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response['Content-Type'], content_type)
+
+    def test_dos_can_schedule_classes_and_examination_invigilators(self):
+        dos = self.login('dos_test')
+        teacher = User.objects.get(username='teacher1')
+        subject = teacher_subjects(teacher).first()
+        school_class = subject.school_classes.first()
+        year = school_class.academic_year
+
+        schedule_data = {
+            'academic_year': year.pk,
+            'term': Term.Name.TERM_1,
+            'school_class': school_class.pk,
+            'subject': subject.pk,
+            'teacher': teacher.pk,
+            'weekday': TeachingSchedule.Weekday.MONDAY,
+            'start_time': '08:00',
+            'end_time': '08:45',
+            'room': 'Room 1',
+        }
+        response = self.client.post(
+            reverse('academics:teaching_schedule_create'), schedule_data
+        )
+        self.assertRedirects(
+            response, reverse('academics:teaching_schedule_list')
+        )
+        schedule = TeachingSchedule.objects.get(room='Room 1')
+        self.assertEqual(schedule.teacher, teacher)
+        self.assertTrue(AcademicAuditLog.objects.filter(
+            action='academic_record_created',
+            object_id=str(schedule.pk),
+            object_type='TeachingSchedule',
+        ).exists())
+
+        exam = Examination.objects.filter(academic_year=year).first()
+        self.assertIsNotNone(exam)
+        exam.school_classes.add(school_class)
+        session_data = {
+            'examination': exam.pk,
+            'school_class': school_class.pk,
+            'subject': subject.pk,
+            'exam_date': exam.start_date.isoformat(),
+            'start_time': '09:00',
+            'end_time': '10:00',
+            'venue': 'Main Hall',
+            'invigilators': [teacher.pk],
+        }
+        response = self.client.post(
+            reverse('academics:examination_session_create'), session_data
+        )
+        self.assertRedirects(
+            response, reverse('academics:examination_session_list')
+        )
+        session = ExaminationSession.objects.get(examination=exam)
+        self.assertEqual(session.created_by, dos)
+        self.assertSetEqual(set(session.invigilators.all()), {teacher})
+        self.assertTrue(teacher.notifications.filter(
+            title=f'Examination duty: {exam.name}'
+        ).exists())
+
+    def test_excel_exports_write_formula_like_user_values_as_text(self):
+        from reports import views as report_views
+
+        if report_views.Workbook is None:
+            self.skipTest('openpyxl is required for Excel exports.')
+
+        from openpyxl import load_workbook
+
+        formula_like_values = [
+            ' \t=1+1',
+            '\x01+1',
+            '-1',
+            '@SUM(1,1)',
+        ]
+        response = report_views._excel_response(
+            'formula-safety',
+            ['Value'],
+            [[value] for value in formula_like_values],
+            'Safety',
+        )
+        workbook = load_workbook(BytesIO(response.content), data_only=False)
+        for row_number, original_value in enumerate(formula_like_values, start=2):
+            with self.subTest(value=repr(original_value)):
+                cell = workbook.active.cell(row=row_number, column=1)
+                self.assertEqual(cell.data_type, 's')
+                self.assertTrue(cell.value.startswith("'"))
+        self.assertEqual(workbook.active['A2'].value, "' \t=1+1")
+        self.assertEqual(workbook.active['A3'].value, "'+1")
 
     def test_registrar_dashboard_displays_student_records_and_actions(self):
         response = self.client.post(

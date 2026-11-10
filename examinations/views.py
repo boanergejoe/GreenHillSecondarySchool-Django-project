@@ -15,7 +15,7 @@ from django.utils import timezone
 from academics.access import (
     teacher_can_access_student, teacher_class_ids, teacher_classes, teacher_subjects,
 )
-from academics.models import SchoolClass, Subject
+from academics.models import AcademicAuditLog, SchoolClass, Subject
 from accounts.mixins import role_required, user_has_role
 from school.generic import BaseCreateView, BaseDeleteView, BaseListView, BaseUpdateView
 from students.models import Student
@@ -38,7 +38,7 @@ except ImportError:  # pragma: no cover
 class ExaminationListView(BaseListView):
     model = Examination
     page_title = 'Examinations'
-    allowed_roles = ('teacher', 'accountant')
+    allowed_roles = ('teacher', 'accountant', 'dos')
     search_fields = ['name', 'academic_year__name', 'school_classes__name']
     columns = [
         ('Examination', 'name'), ('Type', 'get_exam_type_display'),
@@ -71,7 +71,19 @@ class ExaminationCreateView(BaseCreateView):
     required_field_exclusions = ('school_classes',)
     success_url = reverse_lazy('examinations:exam_list')
     cancel_url_name = 'examinations:exam_list'
+    allowed_roles = ('dos',)
     success_message = 'Examination created successfully.'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AcademicAuditLog.objects.create(
+            actor=self.request.user,
+            action='examination_created',
+            object_type='Examination',
+            object_id=self.object.pk,
+            summary=f'Created examination "{self.object.name}".',
+        )
+        return response
 
 
 class ExaminationUpdateView(BaseUpdateView):
@@ -80,7 +92,19 @@ class ExaminationUpdateView(BaseUpdateView):
     page_title = 'Edit Examination'
     success_url = reverse_lazy('examinations:exam_list')
     cancel_url_name = 'examinations:exam_list'
+    allowed_roles = ('dos',)
     success_message = 'Examination updated successfully.'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        AcademicAuditLog.objects.create(
+            actor=self.request.user,
+            action='examination_updated',
+            object_type='Examination',
+            object_id=self.object.pk,
+            summary=f'Updated examination "{self.object.name}".',
+        )
+        return response
 
 
 class ExaminationDeleteView(BaseDeleteView):
@@ -88,6 +112,44 @@ class ExaminationDeleteView(BaseDeleteView):
     page_title = 'Delete Examination'
     success_url = reverse_lazy('examinations:exam_list')
     cancel_url_name = 'examinations:exam_list'
+    allowed_roles = ('dos',)
+
+    def form_valid(self, form):
+        AcademicAuditLog.objects.create(
+            actor=self.request.user,
+            action='examination_deleted',
+            object_type='Examination',
+            object_id=self.object.pk,
+            summary=f'Deleted examination "{self.object.name}".',
+        )
+        return super().form_valid(form)
+
+
+@role_required('dos')
+def approve_examination_results(request, pk):
+    if request.method != 'POST':
+        raise PermissionDenied('Examination approval requires a POST request.')
+    exam = get_object_or_404(Examination, pk=pk)
+    if exam.is_published:
+        messages.info(request, 'This examination is already published.')
+        return redirect('examinations:exam_detail', pk=exam.pk)
+    result_count = exam.results.count()
+    if not result_count:
+        messages.error(
+            request, 'Record and review examination results before publishing them.'
+        )
+        return redirect('examinations:exam_detail', pk=exam.pk)
+    exam.is_published = True
+    exam.save(update_fields=['is_published'])
+    AcademicAuditLog.objects.create(
+        actor=request.user,
+        action='examination_results_approved',
+        object_type='Examination',
+        object_id=exam.pk,
+        summary=f'Approved and published {result_count} results for "{exam.name}".',
+    )
+    messages.success(request, f'Results for {exam.name} are approved and published.')
+    return redirect('examinations:exam_detail', pk=exam.pk)
 
 
 @login_required
@@ -149,6 +211,7 @@ def exam_detail(request, pk):
         'subjects': subject_rows,
         'results': results,
         'result_count': results_qs.count(),
+        'can_approve_results': request.user.role == 'dos',
     })
 
 
@@ -228,7 +291,7 @@ def enter_results(request, pk):
     })
 
 
-@login_required
+@role_required('teacher', 'accountant', 'dos', 'student', 'parent')
 def result_list(request):
     user = request.user
     qs = Result.objects.select_related(

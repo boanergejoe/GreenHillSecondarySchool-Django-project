@@ -12,4 +12,9 @@ urlpatterns = [
     path('results/<str:fmt>/', views.export_results, name='export_results'),
     path('finance/<str:fmt>/', views.export_finance, name='export_finance'),
     path('class-performance/', views.class_performance, name='class_performance'),
+    path('teacher-performance/', views.teacher_performance, name='teacher_performance'),
+    path('subject-performance/', views.subject_performance, name='subject_performance'),
+    path('department-performance/', views.department_performance, name='department_performance'),
+    path('syllabus-coverage/', views.syllabus_coverage_report, name='syllabus_coverage'),
+    path('student-progress/', views.student_progress, name='student_progress'),
 ]

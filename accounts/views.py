@@ -336,6 +336,173 @@ def _registrar_dashboard_context():
     }
 
 
+def _dos_dashboard_context():
+    from academics.models import (
+        AcademicAuditLog, AcademicYear, LessonPlan, SchoolClass, Subject,
+        ExaminationSession, SyllabusCoverage, TeacherAttendance,
+    )
+    from attendance.models import Attendance
+    from examinations.models import Examination, Result
+    from django.db.models import Avg, ExpressionWrapper, F, FloatField
+    from students.models import Student
+    from teachers.models import Teacher
+    from .models import User
+
+    current_year = AcademicYear.objects.filter(is_current=True).first()
+    examinations = Examination.objects.select_related('academic_year')
+    results = Result.objects.all()
+    subjects = Subject.objects.filter(is_active=True)
+    classes = SchoolClass.objects.all()
+    coverage = SyllabusCoverage.objects.all()
+    lesson_plans = LessonPlan.objects.select_related(
+        'teacher', 'subject', 'school_class'
+    )
+    if current_year:
+        examinations = examinations.filter(academic_year=current_year)
+        results = results.filter(examination__academic_year=current_year)
+        subjects = subjects.filter(academic_year=current_year)
+        classes = classes.filter(academic_year=current_year)
+        coverage = coverage.filter(academic_year=current_year)
+        lesson_plans = lesson_plans.filter(academic_year=current_year)
+
+    today = timezone.localdate()
+    attendance_today = Attendance.objects.filter(date=today)
+    teacher_attendance_today = TeacherAttendance.objects.filter(date=today)
+    upcoming_examinations = examinations.filter(
+        start_date__gte=today
+    ).order_by('start_date', 'name')[:6]
+    upcoming_sessions = ExaminationSession.objects.filter(
+        exam_date__gte=today,
+    )
+    if current_year:
+        upcoming_sessions = upcoming_sessions.filter(
+            examination__academic_year=current_year
+        )
+    upcoming_sessions = upcoming_sessions.select_related(
+        'examination', 'school_class', 'subject'
+    ).prefetch_related('invigilators').order_by(
+        'exam_date', 'start_time'
+    )[:6]
+    pending_lesson_plans = lesson_plans.filter(
+        status=LessonPlan.Status.PENDING
+    )
+    performance = results.aggregate(
+        average=Avg(ExpressionWrapper(
+            F('marks_obtained') * 100.0 / F('total_marks'),
+            output_field=FloatField(),
+        ))
+    )['average']
+    coverage_records = list(coverage)
+    planned_topics = sum(item.topics_planned for item in coverage_records)
+    completed_topics = sum(item.topics_completed for item in coverage_records)
+    syllabus_completion = (
+        round(completed_topics / planned_topics * 100, 1)
+        if planned_topics else None
+    )
+    departmental_performance = list(
+        results.values('subject__departments__name').annotate(
+            average=Avg(ExpressionWrapper(
+                F('marks_obtained') * 100.0 / F('total_marks'),
+                output_field=FloatField(),
+            ))
+        ).order_by('subject__departments__name')
+    )
+    performance_by_class = list(
+        results.values('student__school_class__name').annotate(
+            average=Avg(ExpressionWrapper(
+                F('marks_obtained') * 100.0 / F('total_marks'),
+                output_field=FloatField(),
+            ))
+        ).order_by('student__school_class__name')
+    )
+    student_performance = results.filter(
+        student__status=Student.Status.ACTIVE,
+        student__is_archived=False,
+    ).values(
+        'student_id', 'student__student_id', 'student__user__first_name',
+        'student__user__last_name', 'student__school_class__name',
+    ).annotate(
+        average=Avg(ExpressionWrapper(
+            F('marks_obtained') * 100.0 / F('total_marks'),
+            output_field=FloatField(),
+        )),
+        assessment_count=Count('pk'),
+    )
+    teacher_activity = list(
+        Teacher.objects.filter(status=Teacher.Status.ACTIVE).select_related(
+            'user'
+        ).prefetch_related('user__teaching_subjects').order_by(
+            'user__first_name', 'user__last_name'
+        )
+    )
+    recent_activities = AcademicAuditLog.objects.select_related(
+        'actor'
+    ).order_by('-created_at')[:8]
+    return {
+        'dos_current_year': current_year,
+        'dos_student_count': Student.objects.filter(
+            status=Student.Status.ACTIVE, is_archived=False,
+            school_class__in=classes,
+        ).count(),
+        'dos_teacher_count': Teacher.objects.filter(
+            status=Teacher.Status.ACTIVE
+        ).count(),
+        'dos_teacher_total_count': User.objects.filter(
+            role=User.Role.TEACHER, is_active=True
+        ).count(),
+        'dos_class_count': classes.count(),
+        'dos_subject_count': subjects.count(),
+        'dos_stream_count': classes.exclude(stream='').values(
+            'level', 'stream'
+        ).distinct().count(),
+        'dos_exam_count': examinations.count(),
+        'dos_draft_exam_count': examinations.filter(is_published=False).count(),
+        'dos_result_count': results.count(),
+        'dos_academic_average': round(performance, 1) if performance is not None else None,
+        'dos_syllabus_completion': syllabus_completion,
+        'dos_coverage_count': len(coverage_records),
+        'dos_planned_topics': planned_topics,
+        'dos_completed_topics': completed_topics,
+        'dos_pending_report_count': pending_lesson_plans.count(),
+        'dos_pending_lesson_plans': pending_lesson_plans.order_by(
+            'lesson_date', 'teacher__first_name'
+        )[:6],
+        'dos_attendance_today_count': attendance_today.count(),
+        'dos_teacher_attendance_present_count': teacher_attendance_today.filter(
+            status__in=(
+                TeacherAttendance.Status.PRESENT,
+                TeacherAttendance.Status.LATE,
+            )
+        ).count(),
+        'dos_teacher_attendance_absent_count': teacher_attendance_today.filter(
+            status=TeacherAttendance.Status.ABSENT
+        ).count(),
+        'dos_teacher_attendance_count': teacher_attendance_today.count(),
+        'dos_upcoming_examinations': upcoming_examinations,
+        'dos_upcoming_exam_sessions': upcoming_sessions,
+        'dos_recent_activities': recent_activities,
+        'dos_teacher_activity': teacher_activity,
+        'dos_department_labels': [
+            row['subject__departments__name'] or 'Unassigned'
+            for row in departmental_performance
+        ],
+        'dos_department_values': [
+            round(row['average'] or 0, 1) for row in departmental_performance
+        ],
+        'dos_class_labels': [
+            row['student__school_class__name'] or 'Unassigned'
+            for row in performance_by_class
+        ],
+        'dos_class_performance_values': [
+            round(row['average'] or 0, 1) for row in performance_by_class
+        ],
+        'dos_top_performers': student_performance.order_by('-average')[:5],
+        'dos_students_needing_support': student_performance.filter(
+            average__lt=50
+        ).order_by('average')[:5],
+    }
+
+
 def _parent_dashboard_context(user):
     from attendance.models import Attendance
     from students.models import Student
@@ -381,6 +548,9 @@ def dashboard(request):
     elif user.role == User.Role.REGISTRAR:
         context.update(_registrar_dashboard_context())
         context['dashboard_type'] = 'registrar'
+    elif user.role == User.Role.DOS:
+        context.update(_dos_dashboard_context())
+        context['dashboard_type'] = 'dos'
     elif user.role == User.Role.TEACHER:
         context.update(_teacher_dashboard_context(user))
         context['dashboard_type'] = 'teacher'
@@ -454,6 +624,7 @@ class StaffListView(RoleRequiredMixin, ListView):
                 (User.Role.TEACHER, 'Teacher / Lecturer'),
                 (User.Role.ACCOUNTANT, 'Accountant'),
                 (User.Role.REGISTRAR, 'Registrar'),
+                (User.Role.DOS, 'Director of Studies (DOS)'),
             ],
         })
         return context

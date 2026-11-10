@@ -125,10 +125,75 @@
                 <a class="nav-link {% if 'enrollments' in request.path %}active{% endif %}" href="{% url 'academics:enrollment_list' %}">
                     <i class="bi bi-calendar-check"></i><span>{{ "Enrollments"|school_translate }}</span>
                 </a>
+            {% elif user.role == 'dos' %}
+                <div class="sidebar-group">Director of Studies</div>
+                <a class="nav-link {% if '/departments/' in request.path %}active{% endif %}" href="{% url 'academics:department_list' %}">
+                    <i class="bi bi-diagram-3"></i><span>Departments</span>
+                </a>
+                <a class="nav-link {% if '/classes/' in request.path %}active{% endif %}" href="{% url 'academics:class_list' %}">
+                    <i class="bi bi-door-open"></i><span>Classes</span>
+                </a>
+                <a class="nav-link {% if '/subjects/' in request.path %}active{% endif %}" href="{% url 'academics:subject_list' %}">
+                    <i class="bi bi-book"></i><span>Subjects</span>
+                </a>
+                <a class="nav-link {% if '/syllabus/' in request.path %}active{% endif %}" href="{% url 'academics:syllabus_coverage_list' %}">
+                    <i class="bi bi-journal-check"></i><span>Syllabus Coverage</span>
+                </a>
+                <a class="nav-link {% if '/lesson-plans/' in request.path %}active{% endif %}" href="{% url 'academics:lesson_plan_list' %}">
+                    <i class="bi bi-journal-text"></i><span>Lesson Plans</span>
+                </a>
+                <a class="nav-link {% if '/observations/' in request.path %}active{% endif %}" href="{% url 'academics:observation_list' %}">
+                    <i class="bi bi-eye"></i><span>Classroom Observations</span>
+                </a>
+                <a class="nav-link {% if '/teacher-attendance/' in request.path %}active{% endif %}" href="{% url 'academics:teacher_attendance_list' %}">
+                    <i class="bi bi-person-check"></i><span>Teacher Attendance</span>
+                </a>
+                <a class="nav-link {% if '/teaching-schedule/' in request.path %}active{% endif %}" href="{% url 'academics:teaching_schedule_list' %}">
+                    <i class="bi bi-calendar-week"></i><span>Teaching Schedule</span>
+                </a>
+                <a class="nav-link {% if '/examination-timetable/' in request.path %}active{% endif %}" href="{% url 'academics:examination_session_list' %}">
+                    <i class="bi bi-calendar2-event"></i><span>Examination Timetable</span>
+                </a>
+                <a class="nav-link {% if '/notices/' in request.path %}active{% endif %}" href="{% url 'academics:academic_notice_create' %}">
+                    <i class="bi bi-megaphone"></i><span>Academic Notices</span>
+                </a>
+                <a class="nav-link {% if '/years/' in request.path or '/terms/' in request.path %}active{% endif %}" href="{% url 'academics:year_list' %}">
+                    <i class="bi bi-calendar3"></i><span>Academic Calendar</span>
+                </a>
+                <a class="nav-link {% if '/enrollments/' in request.path %}active{% endif %}" href="{% url 'academics:enrollment_list' %}">
+                    <i class="bi bi-calendar-check"></i><span>Enrollments</span>
+                </a>
+                <a class="nav-link {% if '/examinations/' in request.path %}active{% endif %}" href="{% url 'examinations:exam_list' %}">
+                    <i class="bi bi-clipboard2-data"></i><span>Examinations</span>
+                </a>
+                <a class="nav-link {% if '/results/' in request.path %}active{% endif %}" href="{% url 'examinations:result_list' %}">
+                    <i class="bi bi-award"></i><span>Examination Results</span>
+                </a>
+                <a class="nav-link {% if '/attendance/' in request.path %}active{% endif %}" href="{% url 'attendance:list' %}">
+                    <i class="bi bi-calendar2-check"></i><span>Attendance Review</span>
+                </a>
+                <a class="nav-link {% if '/reports/' in request.path %}active{% endif %}" href="{% url 'reports:index' %}">
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>Academic Reports</span>
+                </a>
+                <a class="nav-link {% if '/activity/' in request.path %}active{% endif %}" href="{% url 'academics:academic_activity' %}">
+                    <i class="bi bi-clock-history"></i><span>Academic Activity Log</span>
+                </a>
             {% elif user.role == 'teacher' %}
                 <div class="sidebar-group">{{ "Teaching"|school_translate }}</div>
                 <a class="nav-link {% if '/subjects/' in request.path %}active{% endif %}" href="{% url 'academics:subject_list' %}">
                     <i class="bi bi-book"></i><span>{{ "My Subjects"|school_translate }}</span>
+                </a>
+                <a class="nav-link {% if '/lesson-plans/' in request.path %}active{% endif %}" href="{% url 'academics:lesson_plan_list' %}">
+                    <i class="bi bi-journal-text"></i><span>Lesson Plans</span>
+                </a>
+                <a class="nav-link {% if '/syllabus/' in request.path %}active{% endif %}" href="{% url 'academics:syllabus_coverage_list' %}">
+                    <i class="bi bi-journal-check"></i><span>Syllabus Coverage</span>
+                </a>
+                <a class="nav-link {% if '/teaching-schedule/' in request.path %}active{% endif %}" href="{% url 'academics:teaching_schedule_list' %}">
+                    <i class="bi bi-calendar-week"></i><span>Teaching Schedule</span>
+                </a>
+                <a class="nav-link {% if '/examination-timetable/' in request.path %}active{% endif %}" href="{% url 'academics:examination_session_list' %}">
+                    <i class="bi bi-calendar2-event"></i><span>Invigilation Schedule</span>
                 </a>
                 <a class="nav-link {% if '/students/' in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
                     <i class="bi bi-people"></i><span>{{ "Students"|school_translate }}</span>

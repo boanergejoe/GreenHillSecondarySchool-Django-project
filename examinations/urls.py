@@ -10,6 +10,7 @@ urlpatterns = [
     path('<int:pk>/', views.exam_detail, name='exam_detail'),
     path('<int:pk>/edit/', views.ExaminationUpdateView.as_view(), name='exam_update'),
     path('<int:pk>/delete/', views.ExaminationDeleteView.as_view(), name='exam_delete'),
+    path('<int:pk>/approve-results/', views.approve_examination_results, name='exam_approve_results'),
     path('<int:pk>/enter-results/', views.enter_results, name='enter_results'),
     path('results/', views.result_list, name='result_list'),
     path('results/<int:pk>/delete/', views.ResultDeleteView.as_view(), name='result_delete'),

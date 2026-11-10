@@ -18,7 +18,7 @@ class AttendanceListView(RoleRequiredMixin, ListView):
     template_name = 'attendance/list.html'
     context_object_name = 'records'
     paginate_by = 15
-    allowed_roles = ('teacher', 'student', 'parent', 'accountant')
+    allowed_roles = ('teacher', 'student', 'parent', 'accountant', 'dos')
 
     def get_queryset(self):
         user = self.request.user

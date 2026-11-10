@@ -9,7 +9,186 @@
     <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>{{ profile_missing }} Please contact the school administrator.</div>
 {% endif %}
 
-{% if dashboard_type == 'admin' or dashboard_type == 'accountant' %}
+{% if dashboard_type == 'dos' %}
+<section class="hero-card mb-4">
+    <div class="row align-items-center g-3">
+        <div class="col-lg-8">
+            <span class="hero-label">Academic leadership</span>
+            <h3 class="mt-1 mb-2">Welcome, {{ user.display_name }}.</h3>
+            <p>{% if dos_current_year %}Academic year {{ dos_current_year.name }}{% else %}Set the current academic year to focus academic reporting.{% endif %} · Director of Studies workspace</p>
+        </div>
+        <div class="col-lg-4 text-lg-end d-flex flex-wrap justify-content-lg-end gap-2">
+            <a href="{% url 'examinations:exam_create' %}" class="btn btn-light btn-sm"><i class="bi bi-plus-lg me-1"></i>Create Examination</a>
+            <a href="{% url 'reports:class_performance' %}" class="btn btn-outline-light btn-sm"><i class="bi bi-graph-up me-1"></i>Class Performance</a>
+        </div>
+    </div>
+</section>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'academics:enrollment_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-people"></i></div><h3>{{ dos_student_count }}</h3><p>Active Students</p></div></a></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'teachers:teacher_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-person-video3"></i></div><h3>{{ dos_teacher_total_count }}</h3><p>Active Teachers</p></div></a></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'academics:class_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-door-open"></i></div><h3>{{ dos_class_count }}</h3><p>Classes &amp; streams</p><span class="trend text-muted">{{ dos_stream_count }} streams</span></div></a></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'academics:subject_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-amber"><i class="bi bi-book"></i></div><h3>{{ dos_subject_count }}</h3><p>Active Subjects</p></div></a></div>
+</div>
+{{ dos_class_labels|json_script:"dos-class-labels" }}
+{{ dos_class_performance_values|json_script:"dos-class-values" }}
+{{ dos_department_labels|json_script:"dos-department-labels" }}
+{{ dos_department_values|json_script:"dos-department-values" }}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-icon bg-soft-blue"><i class="bi bi-bar-chart-line"></i></div><h3>{% if dos_academic_average != None %}{{ dos_academic_average }}%{% else %}—{% endif %}</h3><p>Average Exam Performance</p></div></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'academics:syllabus_coverage_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-green"><i class="bi bi-journal-check"></i></div><h3>{% if dos_syllabus_completion != None %}{{ dos_syllabus_completion }}%{% else %}—{% endif %}</h3><p>Syllabus Completion</p><span class="trend text-muted">{{ dos_completed_topics }}/{{ dos_planned_topics }} topics logged</span></div></a></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'academics:lesson_plan_list' %}?status=pending"><div class="stat-card"><div class="stat-icon bg-soft-purple"><i class="bi bi-hourglass-split"></i></div><h3>{{ dos_pending_report_count }}</h3><p>Pending Lesson Plans</p></div></a></div>
+    <div class="col-6 col-xl-3"><a class="text-decoration-none" href="{% url 'examinations:exam_list' %}"><div class="stat-card"><div class="stat-icon bg-soft-amber"><i class="bi bi-clipboard2-data"></i></div><h3>{{ dos_exam_count }}</h3><p>Examinations</p><span class="trend text-muted">{{ dos_draft_exam_count }} unpublished</span></div></a></div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Performance by Class</h6><a href="{% url 'reports:class_performance' %}" class="btn btn-sm btn-outline-secondary">Details</a></div>
+            <div class="card-body"><div style="height:260px"><canvas id="dosClassPerformanceChart" aria-label="Average examination performance by class"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Department Performance</h6><a href="{% url 'reports:department_performance' %}" class="btn btn-sm btn-outline-secondary">Department report</a></div>
+            <div class="card-body"><div style="height:260px"><canvas id="dosDepartmentPerformanceChart" aria-label="Average examination performance by department"></canvas></div></div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6>Upcoming Examination Schedule</h6>
+                <a href="{% url 'examinations:exam_list' %}" class="btn btn-sm btn-outline-secondary">All examinations</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Examination</th><th>Term</th><th>Dates</th><th>Results</th></tr></thead>
+                    <tbody>
+                    {% for exam in dos_upcoming_examinations %}
+                    <tr>
+                        <td><a class="fw-semibold" href="{% url 'examinations:exam_detail' exam.pk %}">{{ exam.name }}</a><small class="d-block text-muted">{{ exam.school_class_names }}</small></td>
+                        <td>{{ exam.get_term_display|default:"-" }}</td>
+                        <td>{{ exam.start_date|date:"d M Y" }} – {{ exam.end_date|date:"d M Y" }}</td>
+                        <td>{% if exam.is_published %}<span class="badge bg-success-subtle text-success">Published</span>{% else %}<span class="badge bg-warning-subtle text-warning">Draft</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-state">No upcoming examinations are scheduled for this academic year.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><h6>Academic Overview</h6></div>
+            <div class="list-group list-group-flush">
+                <a class="list-group-item d-flex justify-content-between" href="{% url 'examinations:result_list' %}"><span>Recorded results</span><strong>{{ dos_result_count }}</strong></a>
+                <a class="list-group-item d-flex justify-content-between" href="{% url 'attendance:list' %}"><span>Student attendance entries today</span><strong>{{ dos_attendance_today_count }}</strong></a>
+                <a class="list-group-item d-flex justify-content-between" href="{% url 'academics:teacher_attendance_list' %}"><span>Teacher attendance today</span><strong>{{ dos_teacher_attendance_present_count }}/{{ dos_teacher_attendance_count }} present · {{ dos_teacher_attendance_absent_count }} absent</strong></a>
+                <a class="list-group-item" href="{% url 'academics:examination_session_list' %}"><i class="bi bi-calendar2-event me-2"></i>Exam timetable and invigilators</a>
+                <a class="list-group-item" href="{% url 'academics:teaching_schedule_list' %}"><i class="bi bi-calendar-week me-2"></i>Teaching schedule</a>
+                <a class="list-group-item" href="{% url 'reports:index' %}"><i class="bi bi-file-earmark-bar-graph me-2"></i>Academic reports and exports</a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Upcoming Timetabled Exam Sessions</h6><a href="{% url 'academics:examination_session_list' %}" class="btn btn-sm btn-outline-secondary">Manage timetable</a></div>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date and time</th><th>Examination</th><th>Class and subject</th><th>Venue</th><th>Invigilators</th></tr></thead><tbody>
+            {% for session in dos_upcoming_exam_sessions %}
+            <tr><td>{{ session.exam_date|date:"d M Y" }}<small class="d-block text-muted">{{ session.time_range }}</small></td><td>{{ session.examination.name }}</td><td>{{ session.school_class.name }}<small class="d-block text-muted">{{ session.subject.name }}</small></td><td>{{ session.venue }}</td><td>{{ session.invigilator_names }}</td></tr>
+            {% empty %}<tr><td colspan="5" class="empty-state">No individual exam sessions are scheduled yet.</td></tr>{% endfor %}
+            </tbody></table></div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Lesson Plans Awaiting Review</h6><a href="{% url 'academics:lesson_plan_list' %}" class="btn btn-sm btn-outline-secondary">All lesson plans</a></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Topic</th><th>Teacher</th><th>Class / Subject</th><th>Lesson date</th><th></th></tr></thead>
+                    <tbody>
+                    {% for plan in dos_pending_lesson_plans %}
+                    <tr>
+                        <td class="fw-semibold">{{ plan.topic }}</td>
+                        <td>{{ plan.teacher.display_name }}</td>
+                        <td>{{ plan.school_class.name }}<small class="d-block text-muted">{{ plan.subject.name }}</small></td>
+                        <td>{{ plan.lesson_date|date:"d M Y" }}</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'academics:lesson_plan_list' %}">Review</a></td>
+                    </tr>
+                    {% empty %}<tr><td colspan="5" class="empty-state">No lesson plans are awaiting review.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Recent Academic Activity</h6><a href="{% url 'academics:academic_activity' %}" class="btn btn-sm btn-outline-secondary">Activity log</a></div>
+            <div class="card-body">
+                {% for activity in dos_recent_activities %}
+                <div class="activity-item"><div class="dot"><i class="bi bi-journal-check"></i></div><div><strong>{{ activity.action|title }}</strong><small>{{ activity.summary }}<br>{{ activity.created_at|date:"d M Y H:i" }} · {{ activity.actor.display_name|default:"System" }}</small></div></div>
+                {% empty %}<div class="empty-state"><i class="bi bi-clock-history"></i>Academic actions will appear here as work is recorded.</div>{% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Teacher Academic Activity</h6><a href="{% url 'teachers:teacher_list' %}" class="btn btn-sm btn-outline-secondary">Teacher directory</a></div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Teacher</th><th>Department</th><th>Assigned subjects</th><th></th></tr></thead>
+                    <tbody>
+                    {% for teacher in dos_teacher_activity %}
+                    <tr><td>{{ teacher.full_name }}</td><td>{{ teacher.department.name|default:"—" }}</td><td>{{ teacher.subject_count }}</td><td><a href="{% url 'teachers:teacher_detail' teacher.pk %}" class="btn btn-sm btn-outline-secondary">Review</a></td></tr>
+                    {% empty %}<tr><td colspan="4" class="empty-state">No active teacher profiles are available.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer small text-muted">Teacher attendance is not tracked by the current attendance records, which apply to students.</div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><h6>Academic Quality &amp; Curriculum</h6></div>
+            <div class="list-group list-group-flush">
+                <a class="list-group-item d-flex justify-content-between" href="{% url 'academics:syllabus_coverage_list' %}"><span>Syllabus coverage records</span><strong>{{ dos_coverage_count }}</strong></a>
+                <a class="list-group-item" href="{% url 'academics:lesson_plan_list' %}"><i class="bi bi-journal-text me-2"></i>Review schemes and lesson plans</a>
+                <a class="list-group-item" href="{% url 'academics:observation_list' %}"><i class="bi bi-eye me-2"></i>Classroom observations</a>
+                <a class="list-group-item" href="{% url 'reports:teacher_performance' %}"><i class="bi bi-person-lines-fill me-2"></i>Teacher performance report</a>
+                <a class="list-group-item" href="{% url 'reports:subject_performance' %}"><i class="bi bi-bar-chart me-2"></i>Subject performance report</a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Top Performing Students</h6><a href="{% url 'reports:student_progress' %}" class="btn btn-sm btn-outline-secondary">Student progress</a></div>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Student</th><th>Class</th><th>Average</th><th>Assessments</th></tr></thead><tbody>
+            {% for student in dos_top_performers %}<tr><td>{{ student.student__user__first_name }} {{ student.student__user__last_name }}<small class="d-block text-muted">{{ student.student__student_id }}</small></td><td>{{ student.student__school_class__name|default:"—" }}</td><td><span class="badge bg-success-subtle text-success">{{ student.average|floatformat:1 }}%</span></td><td>{{ student.assessment_count }}</td></tr>
+            {% empty %}<tr><td colspan="4" class="empty-state">No student results are available for this academic year.</td></tr>{% endfor %}
+            </tbody></table></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center"><h6>Students Needing Academic Support</h6><a href="{% url 'reports:student_progress' %}" class="btn btn-sm btn-outline-secondary">View progress</a></div>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Student</th><th>Class</th><th>Average</th><th>Assessments</th></tr></thead><tbody>
+            {% for student in dos_students_needing_support %}<tr><td>{{ student.student__user__first_name }} {{ student.student__user__last_name }}<small class="d-block text-muted">{{ student.student__student_id }}</small></td><td>{{ student.student__school_class__name|default:"—" }}</td><td><span class="badge bg-danger-subtle text-danger">{{ student.average|floatformat:1 }}%</span></td><td>{{ student.assessment_count }}</td></tr>
+            {% empty %}<tr><td colspan="4" class="empty-state">No active students are below the 50% support threshold.</td></tr>{% endfor %}
+            </tbody></table></div>
+        </div>
+    </div>
+</div>
+{% elif dashboard_type == 'admin' or dashboard_type == 'accountant' %}
 <section class="hero-card mb-4">
     <div class="row align-items-center g-3">
         <div class="col-lg-8">
@@ -577,6 +756,41 @@ if (classCtx) {
             datasets: [{ data: {{ class_values|safe }}, backgroundColor: ['#143f27','#1c5a35','#2f7a4d','#4c9469','#c9a227','#d4b24a','#8a6b0d','#a8cfb4'], borderWidth: 0 }]
         },
         options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+    });
+}
+{% elif dashboard_type == 'dos' %}
+const classLabelsElement = document.getElementById('dos-class-labels');
+const classValuesElement = document.getElementById('dos-class-values');
+const departmentLabelsElement = document.getElementById('dos-department-labels');
+const departmentValuesElement = document.getElementById('dos-department-values');
+const dosClassCanvas = document.getElementById('dosClassPerformanceChart');
+if (dosClassCanvas && classLabelsElement && classValuesElement) {
+    new Chart(dosClassCanvas, {
+        type: 'bar',
+        data: {
+            labels: JSON.parse(classLabelsElement.textContent),
+            datasets: [{ label: 'Average marks (%)', data: JSON.parse(classValuesElement.textContent), backgroundColor: '#2f7a4d', borderRadius: 8 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+const dosDepartmentCanvas = document.getElementById('dosDepartmentPerformanceChart');
+if (dosDepartmentCanvas && departmentLabelsElement && departmentValuesElement) {
+    new Chart(dosDepartmentCanvas, {
+        type: 'bar',
+        data: {
+            labels: JSON.parse(departmentLabelsElement.textContent),
+            datasets: [{ label: 'Average marks (%)', data: JSON.parse(departmentValuesElement.textContent), backgroundColor: '#c9a227', borderRadius: 8 }]
+        },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, max: 100 } },
+            plugins: { legend: { display: false } }
+        }
     });
 }
 {% elif dashboard_type == 'teacher' %}
