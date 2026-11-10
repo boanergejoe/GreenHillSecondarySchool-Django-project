@@ -89,11 +89,42 @@ Written-answer suggestions send the assignment prompt and submitted answer to th
 ### PythonAnywhere deployment
 
 1. Pull the application changes into the configured source directory and activate the web app's virtual environment.
-2. Install requirements if needed, then run `python manage.py migrate` and `python manage.py collectstatic --noinput`.
-3. Configure `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=False`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_CSRF_TRUSTED_ORIGINS` for the live domain.
-4. Add `OPENAI_API_KEY` as a private environment variable available to the web application. If using the WSGI file for configuration, set it there without committing that file or the secret to the repository; restrict access to the file.
+2. Set production settings in the PythonAnywhere **Web** tab's WSGI configuration file, before the line that imports `get_wsgi_application()`. For example:
+
+   ```python
+   import os
+
+   os.environ['DJANGO_DEBUG'] = 'False'
+   os.environ['DJANGO_SECRET_KEY'] = 'paste-a-new-generated-secret-here'
+   os.environ['DJANGO_ALLOWED_HOSTS'] = '3anto.pythonanywhere.com'
+   os.environ['DJANGO_CSRF_TRUSTED_ORIGINS'] = 'https://3anto.pythonanywhere.com'
+   ```
+
+   Generate the secret in a Bash console with:
+
+   ```bash
+   python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+   ```
+
+   Copy the generated value directly into the WSGI configuration. Keep it private and do not put it in Git, a committed settings file, or a screenshot. Do not use the example placeholder as a real key. `DJANGO_SECRET_KEY` must be at least 50 characters and unique. Do not set `DJANGO_DEBUG=True` on the hosted site.
+3. In a PythonAnywhere Bash console, activate the same virtual environment as the web app, go to the project directory, and export the production settings into that shell before running management commands. Use the same secret as the WSGI file:
+
+   ```bash
+   cd ~/GreenHillSecondarySchool-Django-project
+   source ~/path/to/your/virtualenv/bin/activate
+   export DJANGO_DEBUG=False
+   export DJANGO_SECRET_KEY='the-same-private-secret-as-in-WSGI'
+   export DJANGO_ALLOWED_HOSTS='3anto.pythonanywhere.com'
+   export DJANGO_CSRF_TRUSTED_ORIGINS='https://3anto.pythonanywhere.com'
+   python manage.py check
+   python manage.py migrate
+   python manage.py collectstatic --noinput
+   ```
+
+   Replace the virtual-environment path with the one shown on the PythonAnywhere **Web** tab. Bash `export` values apply only to that console session; they do not configure the web worker, which is why the WSGI settings are required as well. If the project uses MySQL, ensure the database environment variables are also set in the console and WSGI environment.
+4. Add `OPENAI_API_KEY` as a private environment variable available to the web application. If using the WSGI file for configuration, set it there without committing that file or the secret to the repository; restrict access to the file. The AI key is optional for migrations and ordinary Django startup.
 5. Set `OPENAI_MODEL` to a model available to the API key's project. The default is `gpt-4o-mini`.
-6. Reload the web app after changing WSGI/environment configuration.
+6. Save the WSGI file, then reload the web app from the PythonAnywhere **Web** tab.
 7. Verify the app's AI configuration with `python manage.py check_ai` from a console where the key is available. If it reports missing configuration, verify which environment the web process receives. If it reports HTTP 401/403, create a fresh valid API secret and check project permissions. For HTTP 429, check API quota/billing. For network errors, check host outbound access.
 
 Do not run `seed_demo` on production unless demonstration data is intentionally required. Back up the production database and uploaded media before upgrades.
